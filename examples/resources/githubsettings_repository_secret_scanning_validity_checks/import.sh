@@ -1,0 +1,1 @@
+terraform import githubsettings_repository_secret_scanning_validity_checks.example example-owner/example-repository

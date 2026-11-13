@@ -1,0 +1,1 @@
+terraform import githubsettings_repository_oidc_subject_template.example example-owner/example-repository

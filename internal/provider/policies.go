@@ -1,0 +1,173 @@
+package provider
+
+import (
+	"net/http"
+	"slices"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+type policyField struct {
+	name        string
+	typ         attr.Type
+	choices     []string
+	computed    bool
+	description string
+}
+
+type policySpec struct {
+	name         string
+	description  string
+	organization bool
+	suffix       string
+	method       string
+	fields       []policyField
+	jsonPath     []string
+	readOnly     bool
+}
+
+func flag(name, description string) policyField {
+	return policyField{name: name, typ: types.BoolType, description: description}
+}
+
+func choice(name, description string, options ...string) policyField {
+	return policyField{name: name, typ: types.StringType, choices: options, description: description}
+}
+
+func text(name, description string) policyField {
+	return policyField{name: name, typ: types.StringType, description: description}
+}
+
+func (f policyField) accepts(value string) bool {
+	if len(f.choices) == 0 {
+		return value != ""
+	}
+	return slices.Contains(f.choices, value)
+}
+
+func (f policyField) describe() string {
+	if len(f.choices) == 0 {
+		return f.description
+	}
+	return f.description + " Allowed values are " + strings.Join(f.choices, ", ") + "."
+}
+
+var privateForkFields = []policyField{
+	flag("run_workflows_from_fork_pull_requests", "Run workflows from fork pull requests."),
+	flag("send_write_tokens_to_workflows", "Send write tokens to workflows from fork pull requests."),
+	flag("send_secrets_and_variables", "Send secrets and variables to workflows from fork pull requests."),
+	flag("require_approval_for_fork_pr_workflows", "Require approval before running workflows from fork pull requests."),
+}
+
+var policies = []policySpec{
+	{
+		name: "repository_archived_settings", readOnly: true,
+		description: "Records the merge settings of an archived repository and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with read access to the repository.",
+		fields: []policyField{
+			{name: "archived", typ: types.BoolType, computed: true, description: "Whether GitHub reports the repository as archived."},
+			flag("allow_auto_merge", "Allow auto-merge for pull requests."),
+			flag("allow_forking", "Allow users to fork the repository."),
+			flag("allow_merge_commit", "Allow merge commits."),
+			flag("allow_rebase_merge", "Allow rebase merging."),
+			flag("allow_squash_merge", "Allow squash merging."),
+			flag("allow_update_branch", "Allow branches to be updated from their pull requests."),
+			flag("delete_branch_on_merge", "Delete head branches after pull requests merge."),
+			choice("merge_commit_message", "Merge commit message.", "PR_BODY", "PR_TITLE", "BLANK"),
+			choice("merge_commit_title", "Merge commit title.", "PR_TITLE", "MERGE_MESSAGE"),
+			choice("squash_merge_commit_message", "Squash merge commit message.", "PR_BODY", "COMMIT_MESSAGES", "BLANK"),
+			choice("squash_merge_commit_title", "Squash merge commit title.", "PR_TITLE", "COMMIT_OR_PR_TITLE"),
+			flag("web_commit_signoff_required", "Require contributors to sign off on web-based commits."),
+		},
+	},
+	{
+		name: "repository_oidc_subject_template", suffix: "/actions/oidc/customization/sub", method: http.MethodPut,
+		description: "Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. Requires a token with repository administration write access.",
+		fields: []policyField{
+			flag("use_default", "Use GitHub's default subject claim template."),
+			flag("use_immutable_subject", "Use an immutable subject claim."),
+			{name: "include_claim_keys", typ: types.ListType{ElemType: types.StringType}, description: "Ordered claim keys to include in the subject. Omit when use_default is true."},
+		},
+	},
+	{
+		name: "repository_secret_scanning_non_provider_patterns", method: http.MethodPatch,
+		jsonPath:    []string{"security_and_analysis", "secret_scanning_non_provider_patterns"},
+		fields:      []policyField{choice("status", "Secret scanning status.", "enabled", "disabled")},
+		description: "Manages secret scanning for non-provider patterns in one repository. Creating or updating this resource applies the configured status to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with repository administration write access.",
+	},
+	{
+		name: "repository_secret_scanning_validity_checks", readOnly: true,
+		description: "Records the Secret Scanning validity check status that GitHub returns for a repository and compares it with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with repository administration read access.",
+		jsonPath:    []string{"security_and_analysis", "secret_scanning_validity_checks"},
+		fields:      []policyField{choice("status", "Secret scanning status.", "enabled", "disabled")},
+	},
+	{
+		name: "organization_deploy_keys", organization: true, method: http.MethodPatch,
+		fields:      []policyField{flag("deploy_keys_enabled_for_repositories", "Allow organization members to add deploy keys to repositories.")},
+		description: "Manages whether organization members can add deploy keys to repositories. Creating or updating this resource applies the configured setting to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with organization administration write access.",
+	},
+	{
+		name: "organization_recorded_settings", organization: true, readOnly: true,
+		description: "Records organization settings that GitHub returns but the published update schema omits, and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with organization administration read access.",
+		fields: []policyField{
+			text("default_repository_branch", "Default branch name for new repositories."),
+			flag("members_can_change_repo_visibility", "Allow members to change repository visibility."),
+			flag("members_can_create_teams", "Allow members to create teams."),
+			flag("members_can_delete_issues", "Allow members to delete issues."),
+			flag("members_can_delete_repositories", "Allow members to delete repositories."),
+			flag("members_can_invite_outside_collaborators", "Allow members to invite outside collaborators."),
+			flag("members_can_view_dependency_insights", "Allow members to view dependency insights."),
+			flag("readers_can_create_discussions", "Allow users with read access to create discussions."),
+			flag("secret_scanning_validity_checks_enabled", "Whether secret scanning validity checks are enabled."),
+			flag("two_factor_requirement_enabled", "Whether two-factor authentication is required."),
+		},
+	},
+	{
+		name: "repository_workflow_permissions", suffix: "/actions/permissions/workflow", method: http.MethodPut,
+		description: "Manages the default GitHub Actions workflow permissions for one repository. Creating or updating this resource applies the configured permissions to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with repository administration write access.",
+		fields: []policyField{
+			choice("default_workflow_permissions", "Default GITHUB_TOKEN permissions for workflows.", "read", "write"),
+			flag("can_approve_pull_request_reviews", "Allow GitHub Actions to approve pull request reviews."),
+		},
+	},
+	{
+		name: "repository_fork_contributor_approval", suffix: "/actions/permissions/fork-pr-contributor-approval", method: http.MethodPut,
+		description: "Manages the approval policy for workflows from fork pull requests by external contributors in one repository. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing the policy. Requires a token with repository administration write access.",
+		fields:      []policyField{choice("approval_policy", "Approval policy for external contributors.", "first_time_contributors_new_to_github", "first_time_contributors", "all_external_contributors")},
+	},
+	{
+		name: "repository_private_fork_workflows", suffix: "/actions/permissions/fork-pr-workflows-private-repos", method: http.MethodPut,
+		description: "Manages whether workflows from private fork pull requests run in one repository and whether they receive write tokens, secrets, and variables. Creating or updating this resource applies the configured settings to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with repository administration write access.",
+		fields:      privateForkFields,
+	},
+	{
+		name: "organization_private_fork_workflows", organization: true, suffix: "/actions/permissions/fork-pr-workflows-private-repos", method: http.MethodPut,
+		description: "Manages whether workflows from private fork pull requests run across an organization and whether they receive write tokens, secrets, and variables. Creating or updating this resource applies the configured settings to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with organization administration write access.",
+		fields:      privateForkFields,
+	},
+	{
+		name: "repository_pull_requests", method: http.MethodPatch,
+		description: "Manages whether pull requests are enabled in one repository and who can create them. Creating or updating this resource applies the configured settings to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with repository administration write access.",
+		fields: []policyField{
+			flag("has_pull_requests", "Enable pull requests."),
+			choice("pull_request_creation_policy", "Who can create pull requests.", "all", "collaborators_only"),
+		},
+	},
+	{
+		name: "repository_immutable_releases", suffix: "/immutable-releases",
+		description: "Manages immutable releases for one repository. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing the policy. GitHub can enforce immutable releases through the repository owner. enforced_by_owner reports that policy and the provider rejects changes while it is active. Requires a token with repository administration write access.",
+		fields: []policyField{
+			flag("enabled", "Enable immutable releases."),
+			{name: "enforced_by_owner", typ: types.BoolType, computed: true, description: "Whether the repository owner enforces immutable releases. The provider rejects changes while this is true."},
+		},
+	},
+	{
+		name: "organization_immutable_releases", organization: true, suffix: "/settings/immutable-releases", method: http.MethodPut,
+		description: "Manages immutable releases for repositories in one organization. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing it. Requires a token with organization administration write access.",
+		fields: []policyField{
+			choice("enforced_repositories", "Repositories with immutable releases.", "none", "all", "selected"),
+			{name: "selected_repository_ids", typ: types.SetType{ElemType: types.Int64Type}, description: "Repository IDs with immutable releases. Required when enforced_repositories is selected."},
+		},
+	},
+}

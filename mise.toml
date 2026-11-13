@@ -1,0 +1,14 @@
+[tools]
+go = "1.27.4"
+terraform = "1.17.1"
+
+[tasks.check]
+description = "Check Go formatting, modules, vet, tests, build, and Terraform formatting."
+run = [
+  'test -z "$(gofmt -l main.go internal)"',
+  'go mod verify',
+  'go vet ./...',
+  'go test ./...',
+  'go build -o /dev/null .',
+  'terraform fmt -check -recursive examples',
+]

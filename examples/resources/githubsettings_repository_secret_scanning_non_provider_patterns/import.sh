@@ -1,0 +1,1 @@
+terraform import githubsettings_repository_secret_scanning_non_provider_patterns.example example-owner/example-repository

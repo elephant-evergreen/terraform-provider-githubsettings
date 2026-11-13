@@ -1,0 +1,1 @@
+terraform import githubsettings_organization_recorded_settings.example example-owner
