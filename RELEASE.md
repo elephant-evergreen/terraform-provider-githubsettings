@@ -2,13 +2,17 @@
 
 The local release command signs packages, verifies uploaded files and tagged notes, and then publishes the GitHub release. The first release is `v0.0.1`.
 
-For the first public release, use GitHub repository `elephant-evergreen/terraform-provider-githubsettings` to the `elephant-evergreen` namespace in the Terraform Registry. These steps follow HashiCorp's [provider publishing](https://developer.hashicorp.com/terraform/registry/providers/publishing) and [public namespace artifact](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts) documentation.
+For the first public release, publish GitHub repository `elephant-evergreen/terraform-provider-githubsettings` to the `elephant-evergreen` namespace in the Terraform Registry. These steps follow HashiCorp's [provider publishing](https://developer.hashicorp.com/terraform/registry/providers/publishing) and [public namespace artifact](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts) documentation.
 
 ## Decide when to release
 
 Merge verified changes as they are ready. Publish when users need a new feature, a fix, or an important clarification. Release a compatible fix promptly when it blocks real use or addresses a security issue. Combine routine fixes, internal maintenance, and documentation improvements into the next useful release.
 
 Before scheduling a breaking release, look for a compatible default, a deprecation period, or a state migration that preserves existing objects. Group related incompatible changes so users make one upgrade. Publish once the upgrade instructions and representative plans agree.
+
+## Verify upgrades before merging
+
+Before merging an incompatible change, exercise the documented upgrade from each affected installation path with representative configuration and state in a test environment. Include the [bundled provider migration](docs/guides/bundled-provider-migration.md) when the change affects bundled installations. Confirm that the plan contains only the documented actions and that a subsequent plan preserves the existing objects and settings. Reuse the results for the same release candidate and repeat any checks affected by later changes.
 
 ## Choose the version and write the notes
 
@@ -87,7 +91,7 @@ The two Go version commands should report the same version from `mise.toml`. Che
 
 ## Stage and verify a version
 
-Set `TAG` to the reviewed release tag. Start from a clean checkout of the exact commit from `origin/main` and fetch the branch and tags. The tagged commit must contain `release-notes/$TAG.md`. For an incompatible release, run the documented migration with representative HCL and state and verify the resulting plan before tagging.
+Set `TAG` to the reviewed release tag. Start from a clean checkout of the exact commit from `origin/main` and fetch the branch and tags. The tagged commit must contain `release-notes/$TAG.md`. For an incompatible release, confirm that the [upgrade verification](#verify-upgrades-before-merging) covers the release candidate.
 
 ```sh
 git fetch origin main --tags
