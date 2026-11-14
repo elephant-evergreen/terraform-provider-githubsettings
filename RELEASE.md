@@ -4,13 +4,19 @@ Releases are staged and signed locally. GitHub Releases presents the reviewed no
 
 The provider is published from the public GitHub repository `elephant-evergreen/terraform-provider-githubsettings` to the `elephant-evergreen` namespace in the Terraform Registry. These steps follow HashiCorp's [provider publishing](https://developer.hashicorp.com/terraform/registry/providers/publishing) and [public namespace artifact](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts) documentation.
 
+## Decide when to release
+
+Merge verified changes as they are ready. Publish when users need a new feature, a fix, or an important clarification. Release a compatible fix promptly when it blocks real use or addresses a security issue. Combine routine fixes, internal maintenance, and documentation improvements into the next useful release.
+
+Before scheduling a breaking release, look for a compatible default, a deprecation period, or a state migration that preserves existing objects. Group related incompatible changes so users make one upgrade. Publish once the upgrade instructions and representative plans agree.
+
 ## Choose the version and write the notes
 
 | Change | Version while on 0.x |
 | --- | --- |
 | First release | `v0.0.1` |
 | Existing configurations or state require migration, or a documented operation changes incompatibly | Next minor, such as `v0.0.1` → `v0.1.0` |
-| Compatible feature, fix, documentation, or dependency update | Next patch, such as `v0.0.1` → `v0.0.2` |
+| Compatible feature, fix, documentation, or dependency update | When released, next patch, such as `v0.0.1` → `v0.0.2` |
 | Optional release candidate for explicit testing | Target version plus `-rc.1`, then `-rc.2` for a revised candidate |
 
 Once the provider reaches 1.0, use [Semantic Versioning](https://semver.org/). Treat incompatible changes to import IDs, defaults, deletion behavior, and state formats as upgrade changes.
