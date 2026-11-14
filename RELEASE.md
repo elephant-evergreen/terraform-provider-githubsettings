@@ -94,23 +94,23 @@ The two Go version commands should report the same version from `mise.toml`. Che
 Set `TAG` to the reviewed release tag. Start from a clean checkout of the exact commit from `origin/main` and fetch the branch and tags. The tagged commit must contain `release-notes/$TAG.md`. For an incompatible release, confirm that the [upgrade verification](#verify-upgrades-before-merging) covers the release candidate.
 
 ```sh
-git fetch origin main --tags
-mise run check
-git tag -a "$TAG" -m "Release $TAG"
+git fetch origin main --tags &&
+mise run check &&
+git tag -a "$TAG" -m "Release $TAG" &&
 bin/release check-tag "$TAG"
 ```
 
 Set `GPG_FINGERPRINT` to the full fingerprint of the registered key and `RELEASE_PUBLIC_KEY` to the path of its ASCII-armored public key. Export both. The corresponding private key must be available to GPG as `gpg --list-secret-keys "$GPG_FINGERPRINT"`. For unattended signing, use a release environment with the key already unlocked in its GPG agent. Keep the key and passphrase in the credential store.
 
 ```sh
-mise exec goreleaser@2.20.0 -- goreleaser release --clean --skip=publish,announce
+mise exec goreleaser@2.20.0 -- goreleaser release --clean --skip=publish,announce &&
 bin/release verify "$TAG"
 ```
 
 A rehearsal ends here. To publish the verified packages, push the annotated tag and pass the repository explicitly:
 
 ```sh
-git push origin "refs/tags/$TAG"
+git push origin "refs/tags/$TAG" &&
 bin/release publish "$TAG" elephant-evergreen/terraform-provider-githubsettings
 ```
 
