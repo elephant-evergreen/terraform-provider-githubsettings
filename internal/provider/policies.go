@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"slices"
 	"strings"
@@ -26,6 +28,10 @@ type policySpec struct {
 	fields       []policyField
 	jsonPath     []string
 	readOnly     bool
+	validate     func(context.Context, map[string]attr.Value) error
+	normalize    func(context.Context, *gitHubClient, string, map[string]attr.Value) error
+	readFallback func(context.Context, *gitHubClient, policyIdentity, error) (map[string]json.RawMessage, error)
+	write        func(map[string]attr.Value, map[string]attr.Value) (string, any, error)
 }
 
 const (

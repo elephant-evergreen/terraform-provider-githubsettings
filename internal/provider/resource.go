@@ -221,8 +221,8 @@ func (r *policyResource) sync(ctx context.Context, identity policyIdentity, desi
 }
 
 func (r *policyResource) writeRequest(actual, desired map[string]attr.Value, data map[string]any) (string, any, error) {
-	if r.spec.name == repositoryImmutableReleases {
-		return repositoryImmutableReleasesWrite(actual, desired)
+	if r.spec.write != nil {
+		return r.spec.write(actual, desired)
 	}
 	var body any = data
 	for i := len(r.spec.jsonPath) - 1; i >= 0; i-- {
@@ -232,8 +232,10 @@ func (r *policyResource) writeRequest(actual, desired map[string]attr.Value, dat
 }
 
 func (r *policyResource) payload(ctx context.Context, values map[string]attr.Value) (map[string]any, error) {
-	if err := validatePolicyValues(ctx, r.spec.name, values); err != nil {
-		return nil, err
+	if r.spec.validate != nil {
+		if err := r.spec.validate(ctx, values); err != nil {
+			return nil, err
+		}
 	}
 	result := make(map[string]any)
 	for _, field := range r.spec.fields {
@@ -276,16 +278,6 @@ func (r *policyResource) payload(ctx context.Context, values map[string]attr.Val
 	return result, nil
 }
 
-func validatePolicyValues(ctx context.Context, name string, values map[string]attr.Value) error {
-	switch name {
-	case repositoryOIDCSubjectTemplate:
-		return oidcSubjectTemplateRule(ctx, values)
-	case organizationImmutableReleases:
-		return organizationImmutableReleasesRule(values)
-	}
-	return nil
-}
-
 func (r *policyResource) read(ctx context.Context, identity policyIdentity) (types.Object, error) {
 	if r.client == nil {
 		return types.ObjectNull(nil), errors.New("GitHub provider is not configured")
@@ -296,13 +288,11 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 	}
 	var reply map[string]json.RawMessage
 	err = r.client.request(ctx, http.MethodGet, endpoint, nil, &reply)
+	if err != nil && r.spec.readFallback != nil {
+		reply, err = r.spec.readFallback(ctx, r.client, identity, err)
+	}
 	if err != nil {
-		if r.spec.name == repositoryImmutableReleases {
-			reply, err = r.repositoryImmutableReleasesReply(ctx, identity, err)
-		}
-		if err != nil {
-			return types.ObjectNull(nil), err
-		}
+		return types.ObjectNull(nil), err
 	}
 
 	for _, key := range r.spec.jsonPath {
@@ -325,11 +315,11 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 			}
 			fields[field.name] = types.BoolValue(*value)
 		case types.StringType:
-			var value string
-			if json.Unmarshal(reply[field.name], &value) != nil || !field.accepts(value) {
+			var value *string
+			if json.Unmarshal(reply[field.name], &value) != nil || value == nil || !field.accepts(*value) {
 				return types.ObjectNull(nil), fmt.Errorf("GitHub returned an unsupported value for policy field %s", field.name)
 			}
-			fields[field.name] = types.StringValue(value)
+			fields[field.name] = types.StringValue(*value)
 		case types.ListType{ElemType: types.StringType}:
 			var keys []string
 			raw := reply[field.name]
@@ -348,8 +338,10 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 			fields[field.name] = types.SetNull(types.Int64Type)
 		}
 	}
-	if err := r.normalizePolicy(ctx, endpoint, fields); err != nil {
-		return types.ObjectNull(nil), err
+	if r.spec.normalize != nil {
+		if err := r.spec.normalize(ctx, r.client, endpoint, fields); err != nil {
+			return types.ObjectNull(nil), err
+		}
 	}
 	attributeTypes := make(map[string]attr.Type, len(fields))
 	for name, value := range fields {
@@ -360,16 +352,6 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 		return types.ObjectNull(nil), errors.New("could not represent GitHub policy state")
 	}
 	return result, nil
-}
-
-func (r *policyResource) normalizePolicy(ctx context.Context, endpoint string, fields map[string]attr.Value) error {
-	switch r.spec.name {
-	case repositoryOIDCSubjectTemplate:
-		return normalizeOIDCSubjectTemplate(fields)
-	case organizationImmutableReleases:
-		return r.readOrganizationImmutableReleases(ctx, endpoint, fields)
-	}
-	return nil
 }
 
 type allowedValues []string
@@ -410,13 +392,15 @@ func (v policyConfigValidator) validate(ctx context.Context, values map[string]a
 	if err := v.spec.validateTarget(values); err != nil {
 		diagnostics.AddError("Invalid GitHub policy target", err.Error())
 	}
-	if err := validatePolicyValues(ctx, v.spec.name, values); err != nil {
-		attribute := "owner"
-		var ruleErr *policyRuleError
-		if errors.As(err, &ruleErr) {
-			attribute = ruleErr.attribute
+	if v.spec.validate != nil {
+		if err := v.spec.validate(ctx, values); err != nil {
+			attribute := "owner"
+			var ruleErr *policyRuleError
+			if errors.As(err, &ruleErr) {
+				attribute = ruleErr.attribute
+			}
+			diagnostics.AddAttributeError(path.Root(attribute), "Invalid GitHub policy configuration", err.Error())
 		}
-		diagnostics.AddAttributeError(path.Root(attribute), "Invalid GitHub policy configuration", err.Error())
 	}
 	return diagnostics
 }

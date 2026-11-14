@@ -647,6 +647,7 @@ func TestOrganizationImmutableReleasesRejectsInvalidSelectedRepositories(t *test
 	}{
 		{name: "duplicate", totalCount: 2, repositories: []int64{1, 1}},
 		{name: "mismatched count", totalCount: 2, repositories: []int64{1}},
+		{name: "invalid ID", totalCount: 1, repositories: []int64{0}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			policy := testPolicy(t, organizationImmutableReleases, func(w http.ResponseWriter, req *http.Request) {
@@ -670,6 +671,39 @@ func TestOrganizationImmutableReleasesRejectsInvalidSelectedRepositories(t *test
 				t.Fatal("Expected an inconsistent selected repository list to fail")
 			}
 		})
+	}
+}
+
+func TestRateLimitStopsFurtherPolicyRequests(t *testing.T) {
+	var requests atomic.Int64
+	policy := testPolicy(t, "repository_pull_requests", func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.Header().Set("Retry-After", "60")
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	for range 2 {
+		_, err := policy.read(context.Background(), policyIdentity{owner: "owner", repository: "repo"})
+		if err == nil || !strings.Contains(err.Error(), "GitHub API rate limit reached; retry after") {
+			t.Fatalf("Expected rate-limit guidance, got %v", err)
+		}
+	}
+	if requests.Load() != 1 {
+		t.Fatalf("Expected one request during cooldown, got %d", requests.Load())
+	}
+}
+
+func TestSelectedRepositoriesRequireCompleteResponse(t *testing.T) {
+	for _, reply := range []string{`{}`, `{"total_count":0}`, `{"total_count":0,"repositories":[]}{}`} {
+		policy := testPolicy(t, organizationImmutableReleases, func(w http.ResponseWriter, req *http.Request) {
+			if strings.HasSuffix(req.URL.Path, "/repositories") {
+				fmt.Fprint(w, reply)
+				return
+			}
+			fmt.Fprint(w, `{"enforced_repositories":"selected"}`)
+		})
+		if _, err := policy.read(context.Background(), policyIdentity{owner: "owner"}); err == nil {
+			t.Fatalf("Expected invalid selected repository response to fail: %s", reply)
+		}
 	}
 }
 
