@@ -11,4 +11,7 @@ run = [
   'go test ./...',
   'go build -o /dev/null .',
   'terraform fmt -check -recursive examples',
+  "go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...",
+  "go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-name githubsettings",
+  "git diff --exit-code -- docs",
 ]

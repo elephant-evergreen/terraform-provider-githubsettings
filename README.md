@@ -90,11 +90,7 @@ Use [Migrating from the bundled provider](docs/guides/bundled-provider-migration
 
 ## Development
 
-Run `mise run check` to check Go formatting, verify modules, run vet and tests, and check Terraform formatting in `examples/`. Documentation is generated with the standard `tfplugindocs`:
-
-```sh
-go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-name githubsettings
-```
+Run `mise run check` for formatting, tests, vulnerability checks, builds, and generated documentation. Commit updated documentation when the generator changes `docs/`.
 
 ## Release
 
