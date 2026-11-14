@@ -1,1 +1,0 @@
-terraform import githubsettings_organization_deploy_keys.example example-owner

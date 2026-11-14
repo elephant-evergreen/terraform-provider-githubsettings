@@ -18,7 +18,7 @@ var repositoryOIDCSubjectTemplatePolicy = policySpec{
 	method:      http.MethodPut,
 	validate:    oidcSubjectTemplateRule,
 	normalize:   normalizeOIDCSubjectTemplate,
-	description: "Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. GitHub's REST API requires fine-grained repository Actions read access to read this setting on a private repository and Actions write access to update it. Changing the subject format can require corresponding changes to the cloud provider's trust policy; see https://docs.github.com/en/actions/concepts/security/openid-connect. API reference: https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository.",
+	description: "Manage the OpenID Connect subject template for GitHub Actions in one repository. Before changing the subject, check which `sub` values your cloud trust policy accepts. Update the trust policy as needed before applying the new subject format, then verify a workflow can still authenticate. A fine-grained token needs repository Actions read access to read this setting on a private repository and Actions write access to update it. See [OpenID Connect](https://docs.github.com/en/actions/concepts/security/openid-connect) and the [GitHub REST API reference](https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository).",
 	fields: []policyField{
 		flag("use_default", "Use GitHub's default subject claim template."),
 		flag("use_immutable_subject", "Use an immutable subject claim."),

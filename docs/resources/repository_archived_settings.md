@@ -3,14 +3,29 @@
 page_title: "githubsettings_repository_archived_settings Resource - githubsettings"
 subcategory: ""
 description: |-
-  Records the merge settings of an archived repository and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with read access to the repository.
+  Record the merge settings of an archived repository. Use the values GitHub currently reports for the repository. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Give the token read access to the repository.
 ---
 
 # githubsettings_repository_archived_settings (Resource)
 
-Records the merge settings of an archived repository and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with read access to the repository.
+Record the merge settings of an archived repository. Use the values GitHub currently reports for the repository. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Give the token read access to the repository.
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_repository_archived_settings.example
+  id = "example-owner/example-repository"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_repository_archived_settings" "example" {
@@ -55,13 +70,3 @@ resource "githubsettings_repository_archived_settings" "example" {
 ### Read-Only
 
 - `archived` (Boolean) Whether GitHub reports the repository as archived.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_repository_archived_settings.example example-owner/example-repository
-```

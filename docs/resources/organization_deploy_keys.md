@@ -3,14 +3,29 @@
 page_title: "githubsettings_organization_deploy_keys Resource - githubsettings"
 subcategory: ""
 description: |-
-  Manages whether organization members can add deploy keys to repositories. Creating or updating this resource applies the configured setting to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with organization administration write access.
+  Manages whether organization members can add deploy keys to repositories. Requires a token with organization administration write access.
 ---
 
 # githubsettings_organization_deploy_keys (Resource)
 
-Manages whether organization members can add deploy keys to repositories. Creating or updating this resource applies the configured setting to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with organization administration write access.
+Manages whether organization members can add deploy keys to repositories. Requires a token with organization administration write access.
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_organization_deploy_keys.example
+  id = "example-owner"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_organization_deploy_keys" "example" {
@@ -26,13 +41,3 @@ resource "githubsettings_organization_deploy_keys" "example" {
 
 - `deploy_keys_enabled_for_repositories` (Boolean) Allow organization members to add deploy keys to repositories.
 - `owner` (String) GitHub account that owns the repository or organization.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_organization_deploy_keys.example example-owner
-```

@@ -3,14 +3,29 @@
 page_title: "githubsettings_organization_recorded_settings Resource - githubsettings"
 subcategory: ""
 description: |-
-  Records organization settings that GitHub returns but the published update schema omits, and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with organization administration read access.
+  Record the organization settings listed in the schema below. Use the values GitHub currently reports for your organization. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Use a token with organization Administration read access.
 ---
 
 # githubsettings_organization_recorded_settings (Resource)
 
-Records organization settings that GitHub returns but the published update schema omits, and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with organization administration read access.
+Record the organization settings listed in the schema below. Use the values GitHub currently reports for your organization. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Use a token with organization Administration read access.
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_organization_recorded_settings.example
+  id = "example-owner"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_organization_recorded_settings" "example" {
@@ -44,13 +59,3 @@ resource "githubsettings_organization_recorded_settings" "example" {
 - `readers_can_create_discussions` (Boolean) Allow users with read access to create discussions.
 - `secret_scanning_validity_checks_enabled` (Boolean) Whether secret scanning validity checks are enabled.
 - `two_factor_requirement_enabled` (Boolean) Whether two-factor authentication is required.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_organization_recorded_settings.example example-owner
-```

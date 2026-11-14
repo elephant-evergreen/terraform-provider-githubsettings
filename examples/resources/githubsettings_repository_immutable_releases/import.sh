@@ -1,1 +1,0 @@
-terraform import githubsettings_repository_immutable_releases.example example-owner/example-repository

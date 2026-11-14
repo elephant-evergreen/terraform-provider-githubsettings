@@ -3,14 +3,29 @@
 page_title: "githubsettings_repository_secret_scanning_validity_checks Resource - githubsettings"
 subcategory: ""
 description: |-
-  Records the Secret Scanning validity check status that GitHub returns for a repository and compares it with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with repository administration read access.
+  Record the current secret scanning validity check status for this repository. Set status to the value GitHub reports for your repository. If the plan shows a difference, check the status in GitHub before applying. Apply fails while the configured status differs. Use a token with repository Administration read access.
 ---
 
 # githubsettings_repository_secret_scanning_validity_checks (Resource)
 
-Records the Secret Scanning validity check status that GitHub returns for a repository and compares it with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with repository administration read access.
+Record the current secret scanning validity check status for this repository. Set `status` to the value GitHub reports for your repository. If the plan shows a difference, check the status in GitHub before applying. Apply fails while the configured status differs. Use a token with repository Administration read access.
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_repository_secret_scanning_validity_checks.example
+  id = "example-owner/example-repository"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_repository_secret_scanning_validity_checks" "example" {
@@ -28,13 +43,3 @@ resource "githubsettings_repository_secret_scanning_validity_checks" "example" {
 - `owner` (String) GitHub account that owns the repository or organization.
 - `repository` (String) GitHub repository name within the owner account.
 - `status` (String) Secret scanning status. Allowed values are enabled, disabled.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_repository_secret_scanning_validity_checks.example example-owner/example-repository
-```

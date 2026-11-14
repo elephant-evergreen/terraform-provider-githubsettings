@@ -1,1 +1,0 @@
-terraform import githubsettings_organization_private_fork_workflows.example example-owner

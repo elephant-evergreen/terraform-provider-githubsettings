@@ -1,1 +1,0 @@
-terraform import githubsettings_organization_immutable_releases.example example-owner

@@ -12,7 +12,7 @@ Use both providers in the same configuration and assign each setting to one prov
 
 ## Quickstart
 
-This inspects one repository's fork pull request contributor approval policy, imports it, and plans without changing GitHub. Run it in a new working directory, or add the configuration to an existing Terraform project where appropriate. The provider reads `GITHUB_TOKEN` and needs no provider arguments. You need Terraform and the [GitHub CLI](https://cli.github.com/) (`gh`) installed.
+Import one repository's fork pull request contributor approval policy into Terraform state. The import leaves the GitHub policy in place. Run it in a new working directory, or add the configuration to an existing Terraform project where appropriate. The provider reads `GITHUB_TOKEN` and needs no provider arguments. You need Terraform with [import block support](https://developer.hashicorp.com/terraform/language/block/import) and the [GitHub CLI](https://cli.github.com/) (`gh`) installed.
 
 1. Check your `gh` login for github.com:
 
@@ -56,7 +56,7 @@ terraform {
   required_providers {
     githubsettings = {
       source  = "elephant-evergreen/githubsettings"
-      version = "~> 0.0.1"
+      version = "~> 0.0.2"
     }
   }
 }
@@ -70,17 +70,20 @@ resource "githubsettings_repository_fork_contributor_approval" "example" {
 }
 ```
 
-5. Import the existing setting with the same `OWNER/REPOSITORY` and plan:
+5. Add the import block to `main.tf` using the same `OWNER/REPOSITORY`:
 
-```sh
-terraform init
-terraform import githubsettings_repository_fork_contributor_approval.example OWNER/REPOSITORY
-terraform plan
+```terraform
+import {
+  to = githubsettings_repository_fork_contributor_approval.example
+  id = "OWNER/REPOSITORY"
+}
 ```
 
-Import records the current GitHub setting in Terraform state without changing it. When the configuration matches the live value, `terraform plan` reports `No changes`. If it reports a difference, compare it with the output from step 3.
-
-6. Remove the token from your shell:
+6. Install the provider with `terraform init`.
+7. Run `terraform plan -out=adopt.tfplan`. Expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If it includes a policy change, compare the configuration with the output from step 3.
+8. Run `terraform apply adopt.tfplan` to record the policy in Terraform state.
+9. Run `terraform plan` again and expect `No changes`.
+10. Remove the token from your shell:
 
 ```sh
 unset GITHUB_TOKEN

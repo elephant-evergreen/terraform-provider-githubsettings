@@ -1,1 +1,0 @@
-terraform import githubsettings_repository_pull_requests.example example-owner/example-repository

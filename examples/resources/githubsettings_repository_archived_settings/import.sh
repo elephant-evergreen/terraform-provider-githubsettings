@@ -1,1 +1,0 @@
-terraform import githubsettings_repository_archived_settings.example example-owner/example-repository

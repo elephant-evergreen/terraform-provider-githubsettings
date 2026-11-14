@@ -85,7 +85,7 @@ var privateForkFields = []policyField{
 var policies = []policySpec{
 	{
 		name: "repository_archived_settings", readOnly: true,
-		description: "Records the merge settings of an archived repository and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with read access to the repository.",
+		description: "Record the merge settings of an archived repository. Use the values GitHub currently reports for the repository. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Give the token read access to the repository.",
 		fields: []policyField{
 			{name: "archived", typ: types.BoolType, computed: true, description: "Whether GitHub reports the repository as archived."},
 			flag("allow_auto_merge", "Allow auto-merge for pull requests."),
@@ -107,22 +107,22 @@ var policies = []policySpec{
 		name: "repository_secret_scanning_non_provider_patterns", method: http.MethodPatch,
 		jsonPath:    []string{"security_and_analysis", "secret_scanning_non_provider_patterns"},
 		fields:      []policyField{choice("status", "Secret scanning status.", "enabled", "disabled")},
-		description: "Manages secret scanning for non-provider patterns in one repository. Creating or updating this resource applies the configured status to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with repository administration write access.",
+		description: "Manages secret scanning for non-provider patterns in one repository. Requires a token with repository administration write access.",
 	},
 	{
 		name: "repository_secret_scanning_validity_checks", readOnly: true,
-		description: "Records the Secret Scanning validity check status that GitHub returns for a repository and compares it with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with repository administration read access.",
+		description: "Record the current secret scanning validity check status for this repository. Set `status` to the value GitHub reports for your repository. If the plan shows a difference, check the status in GitHub before applying. Apply fails while the configured status differs. Use a token with repository Administration read access.",
 		jsonPath:    []string{"security_and_analysis", "secret_scanning_validity_checks"},
 		fields:      []policyField{choice("status", "Secret scanning status.", "enabled", "disabled")},
 	},
 	{
 		name: "organization_deploy_keys", organization: true, method: http.MethodPatch,
 		fields:      []policyField{flag("deploy_keys_enabled_for_repositories", "Allow organization members to add deploy keys to repositories.")},
-		description: "Manages whether organization members can add deploy keys to repositories. Creating or updating this resource applies the configured setting to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with organization administration write access.",
+		description: "Manages whether organization members can add deploy keys to repositories. Requires a token with organization administration write access.",
 	},
 	{
 		name: "organization_recorded_settings", organization: true, readOnly: true,
-		description: "Records organization settings that GitHub returns but the published update schema omits, and compares them with the configuration during each plan. This resource only reads GitHub settings; apply fails when the configuration differs. Removing the resource from Terraform state stops tracking without changing GitHub. Requires a token with organization administration read access.",
+		description: "Record the organization settings listed in the schema below. Use the values GitHub currently reports for your organization. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Use a token with organization Administration read access.",
 		fields: []policyField{
 			text("default_repository_branch", "Default branch name for new repositories."),
 			flag("members_can_change_repo_visibility", "Allow members to change repository visibility."),
@@ -138,22 +138,22 @@ var policies = []policySpec{
 	},
 	{
 		name: "repository_fork_contributor_approval", suffix: "/actions/permissions/fork-pr-contributor-approval", method: http.MethodPut,
-		description: "Manages the approval policy for workflows from fork pull requests by external contributors in one repository. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing the policy. Requires a token with repository administration write access.",
+		description: "Manage the approval policy for workflows from fork pull requests by external contributors in one repository. To inspect and import the policy, use a fine-grained token with repository Administration read access. To change the policy, grant Administration write access.",
 		fields:      []policyField{choice("approval_policy", "Approval policy for external contributors.", "first_time_contributors_new_to_github", "first_time_contributors", "all_external_contributors")},
 	},
 	{
 		name: "repository_private_fork_workflows", suffix: "/actions/permissions/fork-pr-workflows-private-repos", method: http.MethodPut,
-		description: "Manages whether workflows from private fork pull requests run in one repository and whether they receive write tokens, secrets, and variables. Creating or updating this resource applies the configured settings to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with repository administration write access.",
+		description: "Manages whether workflows from private fork pull requests run in one repository and whether they receive write tokens, secrets, and variables. Requires a token with repository administration write access.",
 		fields:      privateForkFields,
 	},
 	{
 		name: "organization_private_fork_workflows", organization: true, suffix: "/actions/permissions/fork-pr-workflows-private-repos", method: http.MethodPut,
-		description: "Manages whether workflows from private fork pull requests run across an organization and whether they receive write tokens, secrets, and variables. Creating or updating this resource applies the configured settings to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with organization administration write access.",
+		description: "Manages whether workflows from private fork pull requests run across an organization and whether they receive write tokens, secrets, and variables. Requires a token with organization administration write access.",
 		fields:      privateForkFields,
 	},
 	{
 		name: "repository_pull_requests", method: http.MethodPatch,
-		description: "Manages whether pull requests are enabled in one repository and who can create them. Creating or updating this resource applies the configured settings to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with repository administration write access.",
+		description: "Manages whether pull requests are enabled in one repository and who can create them. Requires a token with repository administration write access.",
 		fields: []policyField{
 			flag("has_pull_requests", "Enable pull requests."),
 			choice("pull_request_creation_policy", "Who can create pull requests.", "all", "collaborators_only"),

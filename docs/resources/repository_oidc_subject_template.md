@@ -3,14 +3,29 @@
 page_title: "githubsettings_repository_oidc_subject_template Resource - githubsettings"
 subcategory: ""
 description: |-
-  Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. GitHub's REST API requires fine-grained repository Actions read access to read this setting on a private repository and Actions write access to update it. Changing the subject format can require corresponding changes to the cloud provider's trust policy; see https://docs.github.com/en/actions/concepts/security/openid-connect. API reference: https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository.
+  Manage the OpenID Connect subject template for GitHub Actions in one repository. Before changing the subject, check which sub values your cloud trust policy accepts. Update the trust policy as needed before applying the new subject format, then verify a workflow can still authenticate. A fine-grained token needs repository Actions read access to read this setting on a private repository and Actions write access to update it. See OpenID Connect https://docs.github.com/en/actions/concepts/security/openid-connect and the GitHub REST API reference https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository.
 ---
 
 # githubsettings_repository_oidc_subject_template (Resource)
 
-Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. GitHub's REST API requires fine-grained repository Actions read access to read this setting on a private repository and Actions write access to update it. Changing the subject format can require corresponding changes to the cloud provider's trust policy; see https://docs.github.com/en/actions/concepts/security/openid-connect. API reference: https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository.
+Manage the OpenID Connect subject template for GitHub Actions in one repository. Before changing the subject, check which `sub` values your cloud trust policy accepts. Update the trust policy as needed before applying the new subject format, then verify a workflow can still authenticate. A fine-grained token needs repository Actions read access to read this setting on a private repository and Actions write access to update it. See [OpenID Connect](https://docs.github.com/en/actions/concepts/security/openid-connect) and the [GitHub REST API reference](https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository).
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_repository_oidc_subject_template.example
+  id = "example-owner/example-repository"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_repository_oidc_subject_template" "example" {
@@ -35,13 +50,3 @@ resource "githubsettings_repository_oidc_subject_template" "example" {
 ### Optional
 
 - `include_claim_keys` (List of String) Ordered claim keys to include in the subject. Omit when use_default is true.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_repository_oidc_subject_template.example example-owner/example-repository
-```
