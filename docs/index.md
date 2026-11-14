@@ -14,7 +14,7 @@ Manage GitHub Actions, pull request, release, and security settings for existing
 
 Use this provider alongside [`integrations/github`](https://registry.terraform.io/providers/integrations/github/latest/docs) for selected policies on existing repositories and organizations. See [why this provider exists and when to use it](https://github.com/elephant-evergreen/terraform-provider-githubsettings#why).
 
-Start with the [import quickstart](https://github.com/elephant-evergreen/terraform-provider-githubsettings#quickstart). Before upgrading, read the [release notes for your target version](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases).
+To take over a policy, start with the [import quickstart](https://github.com/elephant-evergreen/terraform-provider-githubsettings#quickstart). Before upgrading, read the [release notes for your target version](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases).
 
 ## Example Usage
 

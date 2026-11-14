@@ -1,1 +1,0 @@
-terraform import githubsettings_repository_fork_contributor_approval.example example-owner/example-repository

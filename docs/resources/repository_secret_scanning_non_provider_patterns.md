@@ -3,14 +3,29 @@
 page_title: "githubsettings_repository_secret_scanning_non_provider_patterns Resource - githubsettings"
 subcategory: ""
 description: |-
-  Manages secret scanning for non-provider patterns in one repository. Creating or updating this resource applies the configured status to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with repository administration write access.
+  Manages secret scanning for non-provider patterns in one repository. Requires a token with repository administration write access.
 ---
 
 # githubsettings_repository_secret_scanning_non_provider_patterns (Resource)
 
-Manages secret scanning for non-provider patterns in one repository. Creating or updating this resource applies the configured status to GitHub; destroying it removes the resource from Terraform state without changing the setting. Requires a token with repository administration write access.
+Manages secret scanning for non-provider patterns in one repository. Requires a token with repository administration write access.
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_repository_secret_scanning_non_provider_patterns.example
+  id = "example-owner/example-repository"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_repository_secret_scanning_non_provider_patterns" "example" {
@@ -28,13 +43,3 @@ resource "githubsettings_repository_secret_scanning_non_provider_patterns" "exam
 - `owner` (String) GitHub account that owns the repository or organization.
 - `repository` (String) GitHub repository name within the owner account.
 - `status` (String) Secret scanning status. Allowed values are enabled, disabled.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_repository_secret_scanning_non_provider_patterns.example example-owner/example-repository
-```

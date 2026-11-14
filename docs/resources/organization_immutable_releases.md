@@ -10,7 +10,22 @@ description: |-
 
 Manages immutable releases for repositories in one organization. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing it. Requires a token with organization administration write access.
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_organization_immutable_releases.example
+  id = "example-owner"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_organization_immutable_releases" "example" {
@@ -31,13 +46,3 @@ resource "githubsettings_organization_immutable_releases" "example" {
 ### Optional
 
 - `selected_repository_ids` (Set of Number) Repository IDs with immutable releases. Required when enforced_repositories is selected.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_organization_immutable_releases.example example-owner
-```

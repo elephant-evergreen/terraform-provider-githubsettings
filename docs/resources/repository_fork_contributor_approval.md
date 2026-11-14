@@ -3,14 +3,29 @@
 page_title: "githubsettings_repository_fork_contributor_approval Resource - githubsettings"
 subcategory: ""
 description: |-
-  Manages the approval policy for workflows from fork pull requests by external contributors in one repository. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing the policy. Requires a token with repository administration write access.
+  Manage the approval policy for workflows from fork pull requests by external contributors in one repository. To inspect and import the policy, use a fine-grained token with repository Administration read access. To change the policy, grant Administration write access.
 ---
 
 # githubsettings_repository_fork_contributor_approval (Resource)
 
-Manages the approval policy for workflows from fork pull requests by external contributors in one repository. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing the policy. Requires a token with repository administration write access.
+Manage the approval policy for workflows from fork pull requests by external contributors in one repository. To inspect and import the policy, use a fine-grained token with repository Administration read access. To change the policy, grant Administration write access.
 
-## Example Usage
+Removing this resource from Terraform management leaves the GitHub setting in place.
+
+## Import the current setting
+
+1. Match the resource arguments to the values GitHub currently reports.
+2. Add the import block below. Replace the example ID and address with those of your resource.
+3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+
+```terraform
+import {
+  to = githubsettings_repository_fork_contributor_approval.example
+  id = "example-owner/example-repository"
+}
+```
+
+## Example configuration
 
 ```terraform
 resource "githubsettings_repository_fork_contributor_approval" "example" {
@@ -28,13 +43,3 @@ resource "githubsettings_repository_fork_contributor_approval" "example" {
 - `approval_policy` (String) Approval policy for external contributors. Allowed values are first_time_contributors_new_to_github, first_time_contributors, all_external_contributors.
 - `owner` (String) GitHub account that owns the repository or organization.
 - `repository` (String) GitHub repository name within the owner account.
-
-## Import
-
-Import is supported using the following syntax:
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```shell
-terraform import githubsettings_repository_fork_contributor_approval.example example-owner/example-repository
-```

@@ -72,8 +72,8 @@ func (r *policyResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		description = "Manages an existing GitHub policy. Removing the resource from State preserves the remote policy."
 	}
 	resp.Schema = schema.Schema{
-		Description: description,
-		Attributes:  attributes,
+		MarkdownDescription: description,
+		Attributes:          attributes,
 	}
 }
 
