@@ -3,12 +3,12 @@
 page_title: "githubsettings_repository_oidc_subject_template Resource - githubsettings"
 subcategory: ""
 description: |-
-  Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. Requires a token with repository administration write access.
+  Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. GitHub's REST API requires fine-grained repository Actions read access to read this setting on a private repository and Actions write access to update it. Changing the subject format can require corresponding changes to the cloud provider's trust policy; see https://docs.github.com/en/actions/concepts/security/openid-connect. API reference: https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository.
 ---
 
 # githubsettings_repository_oidc_subject_template (Resource)
 
-Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. Requires a token with repository administration write access.
+Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. GitHub's REST API requires fine-grained repository Actions read access to read this setting on a private repository and Actions write access to update it. Changing the subject format can require corresponding changes to the cloud provider's trust policy; see https://docs.github.com/en/actions/concepts/security/openid-connect. API reference: https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository.
 
 ## Example Usage
 

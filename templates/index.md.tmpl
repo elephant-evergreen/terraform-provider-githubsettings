@@ -18,3 +18,25 @@ description: |-
 {{ tffile . }}
 {{- end }}
 {{- end }}
+
+## Authentication
+
+The provider reads `GITHUB_TOKEN` from the environment. With the [GitHub CLI](https://cli.github.com/) installed, check the login:
+
+```shell
+gh auth status --hostname github.com
+```
+
+If it reports no account for github.com, sign in:
+
+```shell
+gh auth login --hostname github.com --web
+```
+
+Export a token in the current shell. The command substitution keeps it out of terminal output:
+
+```shell
+GITHUB_TOKEN="$(gh auth token --hostname github.com)" && export GITHUB_TOKEN
+```
+
+Check the resource page and GitHub's REST API documentation for the permissions the setting requires. See [Permissions required for fine-grained personal access tokens](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens) when using a fine-grained PAT. Run `unset GITHUB_TOKEN` when finished.
