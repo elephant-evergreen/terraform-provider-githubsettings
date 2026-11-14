@@ -1,8 +1,6 @@
 # Release a provider version
 
-The local release command signs packages, verifies uploaded files and tagged notes, and then publishes the GitHub release. The first release is `v0.0.1`.
-
-For the first public release, publish GitHub repository `elephant-evergreen/terraform-provider-githubsettings` to the `elephant-evergreen` namespace in the Terraform Registry. These steps follow HashiCorp's [provider publishing](https://developer.hashicorp.com/terraform/registry/providers/publishing) and [public namespace artifact](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts) documentation.
+Users find changes and upgrade instructions in [GitHub Releases](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases). The tag-triggered Release workflow verifies the signed packages and tagged notes before publishing to GitHub, then installs the exact version from [Terraform Registry](https://registry.terraform.io/providers/elephant-evergreen/githubsettings).
 
 ## Decide when to release
 
@@ -34,105 +32,22 @@ Add `release-notes/<tag>.md` in English to the release PR. Write for someone dec
 
 A compatible fix can be brief. For example, lead with `## Upgrade notes` and “Existing configurations and state need no changes.” Follow with the affected resource and the outcome under `## Fixes`, then the tag comparison.
 
-## One-time setup
+## Publish and verify
 
-Do these steps once before the first release.
+1. Review the notes with the changes they describe. For an incompatible release, confirm that the [upgrade verification](#verify-upgrades-before-merging) covers the candidate.
+2. After the PR is merged and Check passes on the exact main-branch commit, set `release_commit` to that SHA and `release_tag` to the version matching the notes. Create and push an annotated tag.
 
-1. Claim the `elephant-evergreen` public namespace in HCP Terraform, or confirm that the organization already owns it. Your HCP Terraform user needs the **Manage public providers** permission.
+   ```sh
+   git fetch origin main --tags &&
+   git tag -a "$release_tag" "$release_commit" -m "Release $release_tag" &&
+   git push origin "refs/tags/$release_tag"
+   ```
 
-2. Install the Terraform Cloud GitHub App for the repository. In the GitHub organization settings, choose **Only select repositories** and select `terraform-provider-githubsettings`. HCP Terraform uses this installation to read the repository and its releases; it does not need access to every repository.
+3. The **Release** workflow checks the tagged commit, builds and signs the packages, and creates or resumes the GitHub draft. It verifies the notes and uploaded digests before publishing. Retry failed uploads on the same tag. Use a new version if tagged files need a correction. Keep published tags and signed assets unchanged.
+4. The workflow waits for the Registry to serve the exact version and verifies a signed installation from an empty directory. If ingestion times out, confirm that the Terraform Cloud GitHub App still has access, inspect the version in HCP Terraform, and use **Resync** if its preview would only add the intended version. Then rerun the workflow on the same tag.
 
-3. Create or select the release signing key. The Registry accepts RSA and DSA keys, but not the default ECC key type; use a separate RSA key for releases if your existing key uses ECC. If you do not have a release key, generate one in a temporary GnuPG home:
+## Registry and signing setup
 
-```sh
-(
-  set -eu
-  umask 077
-  GNUPGHOME="$(mktemp -d)"
-  export GNUPGHOME
-  trap 'gpgconf --kill gpg-agent 2>/dev/null || true; rm -rf -- "$GNUPGHOME"' EXIT
-  trap 'exit 1' HUP INT TERM
-  chmod 700 "$GNUPGHOME"
-  gpg --quick-generate-key "terraform-provider-githubsettings release" rsa4096 cert,sign 2y
-  gpg --armor --export-secret-keys > "$GNUPGHOME/release-private.asc"
-  gpg --armor --export > "$GNUPGHOME/release-public.asc"
-  gpg --fingerprint
-  printf 'Save %s/release-private.asc and %s/release-public.asc in the password manager, then press Enter. ' "$GNUPGHOME" "$GNUPGHOME"
-  read -r
-)
-```
+The provider is registered under the `elephant-evergreen` public namespace in HCP Terraform. Give the Terraform Cloud GitHub App access to this repository through **Only select repositories**. See [HashiCorp's public namespace guide](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts).
 
-Store `release-private.asc`, `release-public.asc`, the passphrase, and the full fingerprint in the password manager before you press Enter. The trap removes the temporary keyring when the block exits, including on failure or interruption, so the password-manager copy is the only retained copy. Never commit the private key, paste it into an issue or chat, or add it to GitHub Actions secrets.
-
-4. Register only the public key in the Terraform Registry under **User Settings > Signing Keys**. Paste the contents of the saved `release-public.asc`; keep the private key out of the Registry.
-
-5. Authenticate the GitHub CLI with an account that can create releases in the repository:
-
-```sh
-gh auth status --hostname github.com
-```
-
-If it reports no account, sign in:
-
-```sh
-gh auth login --hostname github.com --web
-```
-
-6. Install Bash, GitHub CLI, jq, and GnuPG, and confirm the pinned tools are available:
-
-```sh
-mise exec -- go version
-mise exec -- terraform version
-mise exec goreleaser@2.20.0 -- go version
-mise exec goreleaser@2.20.0 -- goreleaser --version
-```
-
-The two Go version commands should report the same version from `mise.toml`. Check that the GoReleaser version is 2.20.0.
-
-## Stage and verify a version
-
-Set `TAG` to the reviewed release tag. Start from a clean checkout of the exact commit from `origin/main` and fetch the branch and tags. The tagged commit must contain `release-notes/$TAG.md`. For an incompatible release, confirm that the [upgrade verification](#verify-upgrades-before-merging) covers the release candidate.
-
-```sh
-git fetch origin main --tags &&
-mise run check &&
-git tag -a "$TAG" -m "Release $TAG" &&
-bin/release check-tag "$TAG"
-```
-
-Set `GPG_FINGERPRINT` to the full fingerprint of the registered key and `RELEASE_PUBLIC_KEY` to the path of its ASCII-armored public key. Export both. The corresponding private key must be available to GPG as `gpg --list-secret-keys "$GPG_FINGERPRINT"`. For unattended signing, use a release environment with the key already unlocked in its GPG agent. Keep the key and passphrase in the credential store.
-
-```sh
-mise exec goreleaser@2.20.0 -- goreleaser release --clean --skip=publish,announce &&
-bin/release verify "$TAG"
-```
-
-A rehearsal ends here. To publish the verified packages, push the annotated tag and pass the repository explicitly:
-
-```sh
-git push origin "refs/tags/$TAG" &&
-bin/release publish "$TAG" elephant-evergreen/terraform-provider-githubsettings
-```
-
-The command verifies the tag, notes, prerelease marker, detached signature, and uploaded SHA-256 digests before making the draft public. Retry an interrupted upload with the same command and the same tag. Use a new version when tagged files need a correction. Published tags and signed assets are immutable.
-
-## Publish to the Registry
-
-For the first release, publish the provider in HCP Terraform after the GitHub release is public:
-
-1. Open the HCP Terraform organization, then **Registry > Public namespaces**.
-2. Select `elephant-evergreen`, choose **Publish > Provider**, and select `terraform-provider-githubsettings`.
-3. Choose a category, accept the terms, and click **Publish provider**.
-4. Wait until the version list shows the selected tag as successfully processed. If processing fails, use the error shown in the namespace and release a new version after fixing it; keep the original signed assets fixed.
-
-For later releases, the Registry's release webhook ingests the published GitHub release automatically. If a version is missing, use **Resync** on the provider page after confirming the Terraform Cloud GitHub App still has access to the repository.
-
-## Verify the published provider
-
-Once the provider is registered, verify the version with a direct, signed Registry install:
-
-```sh
-mise exec -- bin/release verify-registry "$TAG" elephant-evergreen/terraform-provider-githubsettings
-```
-
-The command waits for the exact version and installs it in an empty directory with the provider cache and CLI configuration disabled. After the first registration, run this command immediately after publishing. Registry prerequisites for first publication are listed above.
+The [release public key](keys/release.asc) is registered in that namespace. Store its matching private signing key in the repository's `GPG_PRIVATE_KEY` Actions secret and keep the source copy in the credential store. When rotating the key, register the new public key alongside the existing one, update the committed public key and Actions secret, and retain the old public key to verify past releases. See [HashiCorp's provider publishing guide](https://developer.hashicorp.com/terraform/registry/providers/publishing).

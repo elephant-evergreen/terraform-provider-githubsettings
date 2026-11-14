@@ -94,7 +94,7 @@ Run `mise run check` for formatting, tests, vulnerability checks, builds, and ge
 
 ## Release
 
-The local release command signs packages, verifies the GitHub draft and uploads, and publishes after verification. The Terraform Registry ingests later releases automatically. See [RELEASE.md](RELEASE.md) for versioning, release notes, signing, and Registry verification.
+The release workflow builds, signs, and verifies packages when a version tag is pushed. It publishes the GitHub release and verifies that the signed version installs from Terraform Registry. See [RELEASE.md](RELEASE.md) for versioning, release notes, and signing.
 
 ## License
 
