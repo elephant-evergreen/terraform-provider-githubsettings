@@ -2,13 +2,17 @@
 
 Manage selected GitHub repository and organization settings with Terraform. Install [elephant-evergreen/githubsettings from Terraform Registry](https://registry.terraform.io/providers/elephant-evergreen/githubsettings).
 
-The provider has no configuration arguments. Terraform reads a GitHub API token from the `GITHUB_TOKEN` environment variable. It manages existing settings; it does not create repositories or organizations. Destroying a resource removes it from Terraform state without changing the GitHub setting.
+## Why?
 
-Read the [release notes for your target version](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) before upgrading.
+Use [`integrations/github`](https://registry.terraform.io/providers/integrations/github/latest/docs) for repositories, teams, branch rulesets, and standard Actions settings. Add GitHub Settings for policies that provider does not expose, such as [approval for workflows from fork pull requests](docs/resources/repository_fork_contributor_approval.md), [immutable OIDC subjects for Actions](docs/resources/repository_oidc_subject_template.md), or [an organization's policy on adding deploy keys](docs/resources/organization_deploy_keys.md).
+
+Use both providers in the same configuration and assign each setting to one provider. GitHub Settings manages policies on existing repositories and organizations. Import records the current setting in Terraform state, and removing a resource from management leaves the GitHub setting in place.
+
+[Browse all supported settings](docs/resources/). For upgrades, read the [release notes](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) or the [migration guide for bundled OpenTofu builds](docs/guides/bundled-provider-migration.md).
 
 ## Quickstart
 
-This inspects one repository's fork pull request contributor approval policy, imports it, and plans without changing GitHub. Run it in a new working directory, or add the configuration to an existing Terraform project where appropriate. You need Terraform and the [GitHub CLI](https://cli.github.com/) (`gh`) installed.
+This inspects one repository's fork pull request contributor approval policy, imports it, and plans without changing GitHub. Run it in a new working directory, or add the configuration to an existing Terraform project where appropriate. The provider reads `GITHUB_TOKEN` and needs no provider arguments. You need Terraform and the [GitHub CLI](https://cli.github.com/) (`gh`) installed.
 
 1. Check your `gh` login for github.com:
 
@@ -81,12 +85,6 @@ Import records the current GitHub setting in Terraform state without changing it
 ```sh
 unset GITHUB_TOKEN
 ```
-
-## Managed settings
-
-The provider manages 12 settings: three read-only resources that record GitHub settings and fail apply when configuration differs, and nine write resources that apply configuration to GitHub. See the [resource documentation](docs/resources/) for arguments, attributes, permissions, and import syntax.
-
-Use [Migrating from the bundled provider](docs/guides/bundled-provider-migration.md) if your configuration or state already uses the OpenTofu filesystem-mirror build. It shows how to transfer default workflow permissions to `integrations/github` and switch the remaining settings to this provider.
 
 ## Development
 
