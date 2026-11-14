@@ -131,4 +131,4 @@ Once the provider is registered, verify the version with a direct, signed Regist
 mise exec -- bin/release verify-registry "$TAG" elephant-evergreen/terraform-provider-githubsettings
 ```
 
-The command waits for the exact version and installs it in an empty directory with the provider cache and CLI configuration disabled. Registry prerequisites for first publication are listed above.
+The command waits for the exact version and installs it in an empty directory with the provider cache and CLI configuration disabled. After the first registration, run this command immediately after publishing. Registry prerequisites for first publication are listed above.

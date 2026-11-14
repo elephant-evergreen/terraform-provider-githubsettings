@@ -37,7 +37,22 @@ The independent provider has a different source address. It also drops `githubse
    }
    ```
 
-3. Save a plan using `tofu plan -out=workflow-permissions.tfplan`. The plan must forget the old addresses and import the corresponding new addresses with zero creates, updates, replacements, or deletes. Apply that saved plan and require a subsequent `tofu plan -detailed-exitcode` to exit 0.
+3. Save a plan using `tofu plan -out=workflow-permissions.tfplan`. Before applying it, run the following check. It requires at least one transfer, counts matching forget and import operations and rejects changes to remote resources. For each migration, substitute your exact addresses and repository import IDs for the example mapping.
+
+   ```sh
+   tofu show -json workflow-permissions.tfplan | jq -e '
+     [.resource_changes[]? | select(.change.actions == ["forget"]) | .address]
+       == ["githubsettings_repository_workflow_permissions.settings"]
+     and
+     [.resource_changes[]? | select(.change.importing) | [.address, .change.importing.id]]
+       == [["github_workflow_repository_permissions.settings", "example-repository"]]
+     and all(.resource_changes[]?; .change.actions == ["no-op"] or .change.actions == ["forget"])
+   ' >/dev/null &&
+   tofu apply workflow-permissions.tfplan &&
+   tofu plan -detailed-exitcode
+   ```
+
+   The last plan must exit 0. Keep saved plans private and remove them when verification completes.
 
 ## Switch the remaining resources
 
