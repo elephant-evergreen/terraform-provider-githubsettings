@@ -1,8 +1,8 @@
 # Release a provider version
 
-Releases are staged and signed locally. GitHub Releases presents the reviewed notes and signed packages for each tag. The first release is `v0.0.1`.
+The local release command signs packages, verifies uploaded files and tagged notes, and then publishes the GitHub release. The first release is `v0.0.1`.
 
-The provider is published from the public GitHub repository `elephant-evergreen/terraform-provider-githubsettings` to the `elephant-evergreen` namespace in the Terraform Registry. These steps follow HashiCorp's [provider publishing](https://developer.hashicorp.com/terraform/registry/providers/publishing) and [public namespace artifact](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts) documentation.
+For the first public release, use GitHub repository `elephant-evergreen/terraform-provider-githubsettings` to the `elephant-evergreen` namespace in the Terraform Registry. These steps follow HashiCorp's [provider publishing](https://developer.hashicorp.com/terraform/registry/providers/publishing) and [public namespace artifact](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts) documentation.
 
 ## Decide when to release
 
@@ -74,7 +74,7 @@ If it reports no account, sign in:
 gh auth login --hostname github.com --web
 ```
 
-6. Confirm the pinned tools are available:
+6. Install Bash, GitHub CLI, jq, and GnuPG, and confirm the pinned tools are available:
 
 ```sh
 mise exec -- go version
@@ -87,137 +87,30 @@ The two Go version commands should report the same version from `mise.toml`. Che
 
 ## Stage and verify a version
 
-Start from a clean, reviewed commit on the default branch:
+Set `TAG` to the reviewed release tag. Start from a clean checkout of the exact commit from `origin/main` and fetch the branch and tags. The tagged commit must contain `release-notes/$TAG.md`. For an incompatible release, run the documented migration with representative HCL and state and verify the resulting plan before tagging.
 
 ```sh
-git switch main
-git pull --ff-only
-git status --short
-git log -1 --oneline
-```
-
-`git status --short` must print nothing. Run the repository checks and confirm that the generated documentation is already committed:
-
-```sh
+git fetch origin main --tags
 mise run check
-mise exec -- go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
-mise exec -- go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-name githubsettings
-git diff --exit-code -- docs examples
+git tag -a "$TAG" -m "Release $TAG"
+bin/release check-tag "$TAG"
 ```
 
-For an incompatible release, exercise the documented upgrade from the previous published version with representative HCL and state. Check that the plan contains only the intended actions. Set `VERSION` to the selected version and tag the checked commit locally. Keep the tag local until the checksums and signature pass:
+Set `GPG_FINGERPRINT` to the full fingerprint of the registered key and `RELEASE_PUBLIC_KEY` to the path of its ASCII-armored public key. Export both. The corresponding private key must be available to GPG as `gpg --list-secret-keys "$GPG_FINGERPRINT"`. For unattended signing, use a release environment with the key already unlocked in its GPG agent. Keep the key and passphrase in the credential store.
 
 ```sh
-VERSION=0.0.1
-TAG="v${VERSION}"
-PROVIDER=terraform-provider-githubsettings
-NOTES="release-notes/${TAG}.md"
-printf '%s\n' "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$' &&
-  awk 'NF { print; exit }' "$NOTES" | grep -Eq '^## (Upgrade notes|Breaking changes)$' &&
-  test "$(awk 'NF { count++ } END { print count+0 }' "$NOTES")" -ge 2 &&
-  git tag -a "$TAG" -m "Release $TAG"
+mise exec goreleaser@2.20.0 -- goreleaser release --clean --skip=publish,announce
+bin/release verify "$TAG"
 ```
 
-Build the archives, checksums, and release metadata without uploading anything. `mise exec` supplies both the pinned GoReleaser and the repository Go toolchain:
-
-```sh
-mise exec goreleaser@2.20.0 -- goreleaser release --clean --skip=publish,sign --release-notes="$NOTES"
-```
-
-Run the remaining commands in the same shell so `VERSION`, `TAG`, `PROVIDER`, and `NOTES` stay set.
-
-`--skip=publish` leaves the release on the local machine. `--skip=sign` leaves signing to the explicit GPG command below, so the passphrase path stays interactive.
-
-GoReleaser writes the manifest checksum but does not copy the manifest into `dist/` when publishing is skipped. Copy it with the release asset name and verify every checksum, including the manifest:
-
-```sh
-cp terraform-registry-manifest.json "dist/${PROVIDER}_${VERSION}_manifest.json"
-cd dist
-shasum -a 256 -c "${PROVIDER}_${VERSION}_SHA256SUMS"
-cd ..
-```
-
-Set `GPG_FINGERPRINT` to the full fingerprint of the signing key registered with the Registry. Import the key into a temporary GnuPG home in a subshell:
-
-```sh
-(
-  set -eu
-  umask 077
-  GNUPGHOME="$(mktemp -d)"
-  export GNUPGHOME
-  trap 'gpgconf --kill gpg-agent 2>/dev/null || true; rm -rf -- "$GNUPGHOME"' EXIT
-  trap 'exit 1' HUP INT TERM
-  chmod 700 "$GNUPGHOME"
-
-  printf 'Save the ASCII-armored private key from the password manager as %s/release-private.asc, then press Enter. ' "$GNUPGHOME"
-  read -r
-  test -s "$GNUPGHOME/release-private.asc"
-
-  gpg --import "$GNUPGHOME/release-private.asc"
-  rm -f "$GNUPGHOME/release-private.asc"
-
-  test -n "${GPG_FINGERPRINT:-}"
-  imported_fingerprint="$(gpg --with-colons --list-secret-keys "$GPG_FINGERPRINT" | awk -F: '$1 == "fpr" { print $10; exit }')"
-  test "$imported_fingerprint" = "$GPG_FINGERPRINT"
-
-  gpg --local-user "$GPG_FINGERPRINT" \
-    --output "dist/${PROVIDER}_${VERSION}_SHA256SUMS.sig" \
-    --detach-sign "dist/${PROVIDER}_${VERSION}_SHA256SUMS"
-  gpg --verify "dist/${PROVIDER}_${VERSION}_SHA256SUMS.sig" "dist/${PROVIDER}_${VERSION}_SHA256SUMS"
-)
-```
-
-The script checks the imported key against the registered fingerprint before signing. `gpg --verify` must report a good signature. The Registry requires a binary `.sig` file. Enter the passphrase through GPG's normal pinentry.
-
-Check that every archive contains the versioned provider binary:
-
-```sh
-for platform in darwin_amd64 darwin_arm64 linux_amd64 linux_arm64; do
-  unzip -l "dist/${PROVIDER}_${VERSION}_${platform}.zip"
-done
-```
-
-Each listing must include `terraform-provider-githubsettings_v${VERSION}` with the selected version. The four archives are `darwin_amd64`, `darwin_arm64`, `linux_amd64`, and `linux_arm64`.
-
-If a tagged file needs a correction while the tag is still local, delete the local tag with `git tag -d "$TAG"`, review the correction, and tag the corrected commit. For a release rehearsal, stop after verifying the archives. To publish, push the tag after all checks pass:
+A rehearsal ends here. To publish the verified packages, push the annotated tag and pass the repository explicitly:
 
 ```sh
 git push origin "refs/tags/$TAG"
+bin/release publish "$TAG" elephant-evergreen/terraform-provider-githubsettings
 ```
 
-## Create the draft GitHub release
-
-Create a draft release and upload the staged assets. The tag is now on GitHub, so `--verify-tag` prevents the CLI from creating a different tag:
-
-```sh
-prerelease=false
-case "$VERSION" in
-  *-rc.*) prerelease=true ;;
-esac
-gh release create "$TAG" --verify-tag --draft --prerelease="$prerelease" --title "$TAG" --notes-file "$NOTES" \
-  "dist/${PROVIDER}_${VERSION}_darwin_amd64.zip" \
-  "dist/${PROVIDER}_${VERSION}_darwin_arm64.zip" \
-  "dist/${PROVIDER}_${VERSION}_linux_amd64.zip" \
-  "dist/${PROVIDER}_${VERSION}_linux_arm64.zip" \
-  "dist/${PROVIDER}_${VERSION}_manifest.json" \
-  "dist/${PROVIDER}_${VERSION}_SHA256SUMS" \
-  "dist/${PROVIDER}_${VERSION}_SHA256SUMS.sig"
-```
-
-Inspect the draft before making it public:
-
-```sh
-gh release view "$TAG" --json isDraft,isPrerelease,body,assets \
-  --jq '{draft: .isDraft, prerelease: .isPrerelease, notes: .body, assets: [.assets[].name]}'
-```
-
-Confirm that the draft contains the reviewed notes and the seven expected assets. For an RC tag, confirm that the draft is marked as a prerelease. Retry transient upload failures against the same unpublished draft after checking which assets are present. If files from a pushed tag need a correction, use a new version. Keep published tags and signed assets fixed. Publish factual corrections to the notes in the release body with a dated correction.
-
-Publish the draft:
-
-```sh
-gh release edit "$TAG" --draft=false
-```
+The command verifies the tag, notes, prerelease marker, detached signature, and uploaded SHA-256 digests before making the draft public. Retry an interrupted upload with the same command and the same tag. Use a new version when tagged files need a correction. Published tags and signed assets are immutable.
 
 ## Publish to the Registry
 
@@ -232,37 +125,10 @@ For later releases, the Registry's release webhook ingests the published GitHub 
 
 ## Verify the published provider
 
-Run a direct Registry init in a fresh directory. The subshell disables CLI configuration and the provider cache, and it resolves the Terraform binary before changing directory:
+Once the provider is registered, verify the version with a direct, signed Registry install:
 
 ```sh
-(
-  set -eu
-  workdir="$(mktemp -d)"
-  terraform_bin="$(mise which terraform 2>/dev/null || command -v terraform)"
-  trap 'rm -rf -- "$workdir"' EXIT
-  trap 'exit 1' HUP INT TERM
-  cd "$workdir"
-  unset TF_PLUGIN_CACHE_DIR TF_DATA_DIR
-  cat > main.tf <<EOF
-terraform {
-  required_providers {
-    githubsettings = {
-      source  = "elephant-evergreen/githubsettings"
-      version = "= $VERSION"
-    }
-  }
-}
-EOF
-  if ! output="$(TF_CLI_CONFIG_FILE=/dev/null "$terraform_bin" init -no-color 2>&1)"; then
-    printf '%s\n' "$output" >&2
-    exit 1
-  fi
-  printf '%s\n' "$output"
-  printf '%s\n' "$output" | grep -F "Installed elephant-evergreen/githubsettings v$VERSION (" | grep -Eq '\((self-signed, key ID |signed by )'
-  TF_CLI_CONFIG_FILE=/dev/null "$terraform_bin" providers
-)
+mise exec -- bin/release verify-registry "$TAG" elephant-evergreen/terraform-provider-githubsettings
 ```
 
-For this namespace, the signed install line is normally `(self-signed, key ID ...)`, which means Terraform verified the checksum signature with the key registered in the Registry. This assertion applies only to the direct Registry init shown here; a local filesystem mirror or provider cache can install without the signature line.
-
-Open the provider page in the Terraform Registry and confirm that the selected version is listed and its documentation renders. The subshell removes the temporary directory when it exits. A release candidate requires an exact pin. A higher-version candidate may appear as the newest version on the Registry page.
+The command waits for the exact version and installs it in an empty directory with the provider cache and CLI configuration disabled. Registry prerequisites for first publication are listed above.

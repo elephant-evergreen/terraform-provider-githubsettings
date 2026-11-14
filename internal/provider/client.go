@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -80,6 +81,15 @@ func rateLimitReset(resp *http.Response, now time.Time) time.Time {
 		return now.Add(time.Minute)
 	}
 	if resp.StatusCode == http.StatusTooManyRequests {
+		return now.Add(time.Minute)
+	}
+
+	var reply struct {
+		Message string `json:"message"`
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 8<<10))
+	if err == nil && json.Unmarshal(data, &reply) == nil &&
+		strings.Contains(strings.ToLower(reply.Message), "secondary rate limit") {
 		return now.Add(time.Minute)
 	}
 	return time.Time{}

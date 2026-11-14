@@ -692,6 +692,36 @@ func TestRateLimitStopsFurtherPolicyRequests(t *testing.T) {
 	}
 }
 
+func TestForbiddenRateLimitWithoutRetryHeaders(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		message  string
+		want     string
+		requests int64
+	}{
+		{"secondary limit", "You have exceeded a secondary rate limit.", "retry after", 1},
+		{"permission denied", "Resource not accessible by integration", "HTTP 403", 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests atomic.Int64
+			policy := testPolicy(t, "repository_pull_requests", func(w http.ResponseWriter, _ *http.Request) {
+				requests.Add(1)
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprintf(w, `{"message":%q}`, tc.message)
+			})
+			for range 2 {
+				_, err := policy.read(context.Background(), policyIdentity{owner: "owner", repository: "repo"})
+				if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("Expected %q, got %v", tc.want, err)
+				}
+			}
+			if requests.Load() != tc.requests {
+				t.Fatalf("Expected %d requests, got %d", tc.requests, requests.Load())
+			}
+		})
+	}
+}
+
 func TestSelectedRepositoriesRequireCompleteResponse(t *testing.T) {
 	for _, reply := range []string{`{}`, `{"total_count":0}`, `{"total_count":0,"repositories":[]}{}`} {
 		policy := testPolicy(t, organizationImmutableReleases, func(w http.ResponseWriter, req *http.Request) {

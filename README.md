@@ -52,7 +52,7 @@ terraform {
   required_providers {
     githubsettings = {
       source  = "elephant-evergreen/githubsettings"
-      version = "= 0.0.1"
+      version = "~> 0.0.1"
     }
   }
 }
@@ -86,7 +86,7 @@ unset GITHUB_TOKEN
 
 The provider manages 12 settings: three read-only resources that record GitHub settings and fail apply when configuration differs, and nine write resources that apply configuration to GitHub. See the [resource documentation](docs/resources/) for arguments, attributes, permissions, and import syntax.
 
-Default workflow permissions are managed by the official [integrations/github provider](https://registry.terraform.io/providers/integrations/github/latest) resource `github_workflow_repository_permissions`; this provider does not include them.
+Use [Migrating from the bundled provider](docs/guides/bundled-provider-migration.md) if your configuration or state already uses the OpenTofu filesystem-mirror build. It shows how to transfer default workflow permissions to `integrations/github` and switch the remaining settings to this provider.
 
 ## Development
 
@@ -98,7 +98,7 @@ go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 gener
 
 ## Release
 
-Releases are manual; the repository does not use GitHub Actions. Maintainers stage a signed release from a reviewed commit on the default branch, inspect a draft GitHub release, publish it, and then publish or resync the version in the Terraform Registry. See [RELEASE.md](RELEASE.md) for versioning, release notes, signing, and Registry verification.
+The local release command signs packages, verifies the GitHub draft and uploads, and publishes after verification. The Terraform Registry ingests later releases automatically. See [RELEASE.md](RELEASE.md) for versioning, release notes, signing, and Registry verification.
 
 ## License
 

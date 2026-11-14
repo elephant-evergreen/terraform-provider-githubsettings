@@ -26,6 +26,8 @@ terraform {
 provider "githubsettings" {}
 ```
 
+If you already use a bundled OpenTofu build, see the [migration guide](https://registry.terraform.io/providers/elephant-evergreen/githubsettings/latest/docs/guides/bundled-provider-migration).
+
 ## Authentication
 
 The provider reads `GITHUB_TOKEN` from the environment. With the [GitHub CLI](https://cli.github.com/) installed, check the login:
