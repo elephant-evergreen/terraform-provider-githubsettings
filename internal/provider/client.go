@@ -9,27 +9,44 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"golang.org/x/sync/semaphore"
+	"golang.org/x/time/rate"
 )
+
+const maxConcurrentReads = 4
+const readsPerSecond = 8
 
 type gitHubClient struct {
 	baseURL   string
 	token     string
 	http      *http.Client
 	interval  time.Duration
-	requests  chan struct{}
+	requests  *semaphore.Weighted
+	reads     *rate.Limiter
 	nextWrite time.Time
+	retryMu   sync.Mutex
 	retryAt   time.Time
 }
 
 func newGitHubClient(token string) *gitHubClient {
+	transport := http.DefaultTransport
+	if base, ok := transport.(*http.Transport); ok {
+		pool := base.Clone()
+		pool.MaxIdleConnsPerHost = maxConcurrentReads
+		transport = pool
+	}
 	return &gitHubClient{
 		baseURL:  "https://api.github.com",
 		token:    token,
 		interval: time.Second,
-		requests: make(chan struct{}, 1),
+		requests: semaphore.NewWeighted(maxConcurrentReads),
+		reads:    rate.NewLimiter(readsPerSecond, 1),
 		http: &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: transport,
+			Timeout:   30 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
@@ -95,22 +112,52 @@ func rateLimitReset(resp *http.Response, now time.Time) time.Time {
 	return time.Time{}
 }
 
-func (c *gitHubClient) request(ctx context.Context, method, path string, payload any, response any) error {
-	select {
-	case c.requests <- struct{}{}:
-		defer func() { <-c.requests }()
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+func rateLimitError(retryAt time.Time) error {
+	return fmt.Errorf("GitHub API rate limit reached; retry after %s", retryAt.UTC().Format(time.RFC3339))
+}
+
+func (c *gitHubClient) cooldown() error {
+	c.retryMu.Lock()
+	defer c.retryMu.Unlock()
 	if c.retryAt.After(time.Now()) {
-		return fmt.Errorf("GitHub API rate limit reached; retry after %s", c.retryAt.UTC().Format(time.RFC3339))
+		return rateLimitError(c.retryAt)
+	}
+	return nil
+}
+
+func (c *gitHubClient) recordCooldown(retryAt time.Time) error {
+	c.retryMu.Lock()
+	defer c.retryMu.Unlock()
+	if retryAt.After(c.retryAt) {
+		c.retryAt = retryAt
+	}
+	return rateLimitError(c.retryAt)
+}
+
+func (c *gitHubClient) request(ctx context.Context, method, path string, payload any, response any) error {
+	if err := c.cooldown(); err != nil {
+		return err
 	}
 	mutation := method != http.MethodGet
-	var scheduled time.Time
+	weight := int64(1)
 	if mutation {
-		scheduled = c.nextWrite
+		weight = maxConcurrentReads
 	}
-	if err := waitUntil(ctx, scheduled); err != nil {
+	if err := c.requests.Acquire(ctx, weight); err != nil {
+		return err
+	}
+	defer c.requests.Release(weight)
+	if err := c.cooldown(); err != nil {
+		return err
+	}
+
+	var err error
+	if mutation {
+		err = waitUntil(ctx, c.nextWrite)
+	} else {
+		err = c.reads.Wait(ctx)
+	}
+	if err != nil {
 		return err
 	}
 	var body io.Reader
@@ -132,6 +179,9 @@ func (c *gitHubClient) request(ctx context.Context, method, path string, payload
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	if err := c.cooldown(); err != nil {
+		return err
+	}
 	if mutation {
 		c.nextWrite = time.Now().Add(c.interval)
 	}
@@ -142,8 +192,7 @@ func (c *gitHubClient) request(ctx context.Context, method, path string, payload
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		if retryAt := rateLimitReset(resp, time.Now()); !retryAt.IsZero() {
-			c.retryAt = retryAt
-			return fmt.Errorf("GitHub API rate limit reached; retry after %s", retryAt.UTC().Format(time.RFC3339))
+			return c.recordCooldown(retryAt)
 		}
 		return &statusError{method: method, path: path, status: resp.StatusCode}
 	}

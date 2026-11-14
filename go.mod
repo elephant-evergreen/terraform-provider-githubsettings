@@ -2,7 +2,11 @@ module github.com/elephant-evergreen/terraform-provider-githubsettings
 
 go 1.27.4
 
-require github.com/hashicorp/terraform-plugin-framework v1.19.0
+require (
+	github.com/hashicorp/terraform-plugin-framework v1.19.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/time v0.16.0
+)
 
 require (
 	github.com/fatih/color v1.18.0 // indirect
