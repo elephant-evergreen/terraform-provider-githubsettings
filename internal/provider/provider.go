@@ -27,8 +27,8 @@ func (p *settingsProvider) Metadata(_ context.Context, _ provider.MetadataReques
 
 func (p *settingsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description:         "Manages GitHub repository and organization policies using GITHUB_TOKEN.",
-		MarkdownDescription: "Manages GitHub repository and organization policies through the GitHub REST API.\n\nSet `GITHUB_TOKEN` to a token with access to the configured repositories or organization. The provider has no configuration arguments; Terraform reads the token from the environment.\n\nResources manage existing GitHub settings; the provider does not create repositories or organizations. Destroying a resource removes it from Terraform state and stops management without changing the GitHub setting.",
+		Description:         "Manage GitHub Actions, pull request, release, and security settings for existing repositories and organizations.",
+		MarkdownDescription: "Manage GitHub Actions, pull request, release, and security settings for existing repositories and organizations. Destroying a resource removes it from Terraform state and leaves the GitHub setting in place.",
 	}
 }
 

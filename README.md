@@ -4,7 +4,7 @@ Manage selected GitHub repository and organization settings with Terraform. Inst
 
 The provider has no configuration arguments. Terraform reads a GitHub API token from the `GITHUB_TOKEN` environment variable. It manages existing settings; it does not create repositories or organizations. Destroying a resource removes it from Terraform state without changing the GitHub setting.
 
-See [release notes and upgrade instructions](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) before changing the pinned version.
+Read the [release notes for your target version](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) before upgrading.
 
 ## Quickstart
 
@@ -27,8 +27,6 @@ gh auth login --hostname github.com --web
 ```sh
 GITHUB_TOKEN="$(gh auth token --hostname github.com)" && export GITHUB_TOKEN
 ```
-
-`GITHUB_TOKEN` supplies local GitHub API credentials to the provider.
 
 For this setting, a fine-grained personal access token needs repository `Administration: Read` to inspect and `Administration: Read and write` to update. OAuth apps and classic PATs need the `repo` scope. The interactive `gh` login above uses an OAuth app token, which needs the `repo` scope; `gh auth status` shows the token scopes. If the `gh` token has access to the repository, you do not need a separate personal access token. Other settings require different permissions; see the [resource documentation](docs/resources/) for each resource.
 
@@ -54,7 +52,7 @@ terraform {
   required_providers {
     githubsettings = {
       source  = "elephant-evergreen/githubsettings"
-      version = "0.0.1"
+      version = "= 0.0.1"
     }
   }
 }
@@ -67,8 +65,6 @@ resource "githubsettings_repository_fork_contributor_approval" "example" {
   approval_policy = "first_time_contributors"
 }
 ```
-
-This example pins the first release, v0.0.1.
 
 5. Import the existing setting with the same `OWNER/REPOSITORY` and plan:
 

@@ -3,20 +3,14 @@
 page_title: "githubsettings Provider"
 subcategory: ""
 description: |-
-  Manages GitHub repository and organization policies through the GitHub REST API.
-  Set GITHUB_TOKEN to a token with access to the configured repositories or organization. The provider has no configuration arguments; Terraform reads the token from the environment.
-  Resources manage existing GitHub settings; the provider does not create repositories or organizations. Destroying a resource removes it from Terraform state and stops management without changing the GitHub setting.
+  Manage GitHub Actions, pull request, release, and security settings for existing repositories and organizations. Destroying a resource removes it from Terraform state and leaves the GitHub setting in place.
 ---
 
 # githubsettings Provider
 
-Manages GitHub repository and organization policies through the GitHub REST API.
+Manage GitHub Actions, pull request, release, and security settings for existing repositories and organizations. Destroying a resource removes it from Terraform state and leaves the GitHub setting in place.
 
-Set `GITHUB_TOKEN` to a token with access to the configured repositories or organization. The provider has no configuration arguments; Terraform reads the token from the environment.
-
-Resources manage existing GitHub settings; the provider does not create repositories or organizations. Destroying a resource removes it from Terraform state and stops management without changing the GitHub setting.
-
-See [release notes and upgrade instructions](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) before upgrading.
+Start with the [import quickstart](https://github.com/elephant-evergreen/terraform-provider-githubsettings#quickstart). Before upgrading, read the [release notes for your target version](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases).
 
 ## Example Usage
 

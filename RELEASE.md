@@ -13,9 +13,16 @@ The provider is published from the public GitHub repository `elephant-evergreen/
 | Compatible feature, fix, documentation, or dependency update | Next patch, such as `v0.0.1` → `v0.0.2` |
 | Optional release candidate for explicit testing | Target version plus `-rc.1`, then `-rc.2` for a revised candidate |
 
-After 1.0, use [Semantic Versioning](https://semver.org/). Treat incompatible changes to import IDs, defaults, deletion behavior, and state formats as upgrade changes.
+Once the provider reaches 1.0, use [Semantic Versioning](https://semver.org/). Treat incompatible changes to import IDs, defaults, deletion behavior, and state formats as upgrade changes.
 
-Review an English `release-notes/<tag>.md` with the changes for that release. Put **Upgrade notes** first. State who needs to change configuration or state and what plan to expect. For a migration, include the source version, what to back up, and how to recover. Use **Highlights**, **Fixes**, and **Compatibility** where applicable. Use absolute links to versioned documentation so the links work in GitHub Releases.
+Add `release-notes/<tag>.md` in English to the release PR. Write for someone deciding whether to upgrade.
+
+- Start with **Breaking changes** when existing users must act or can encounter incompatible behavior. For each change, identify the resource or setting, affected versions and configurations, what changed, and the action to take before applying. Link to a versioned upgrade guide for multi-step changes. Include a pre-upgrade plan, what to back up, the expected post-upgrade plan, and how to recover. State if an older provider cannot read upgraded state.
+- Start with **Upgrade notes** for other releases. State whether existing users need to change HCL or state. For a first release, tell readers how to adopt existing objects or settings.
+- Use **Highlights** and **Fixes** where applicable. Name the affected resource or setting and explain the behavior the user will see. Link to the relevant PR for context. Use **Compatibility** when supported platforms or verification change, and distinguish fixture results from live verification.
+- End with a GitHub comparison from the previous public stable tag to this tag. For the first release, link to the versioned provider reference instead. Use absolute URLs and pin links to supporting documentation to the tag so they work in GitHub Releases.
+
+A compatible fix can be brief. For example, lead with `## Upgrade notes` and “Existing configurations and state need no changes.” Follow with the affected resource and the outcome under `## Fixes`, then the tag comparison.
 
 ## One-time setup
 
@@ -100,7 +107,8 @@ TAG="v${VERSION}"
 PROVIDER=terraform-provider-githubsettings
 NOTES="release-notes/${TAG}.md"
 printf '%s\n' "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$' &&
-  grep -q '[^[:space:]]' "$NOTES" &&
+  awk 'NF { print; exit }' "$NOTES" | grep -Eq '^## (Upgrade notes|Breaking changes)$' &&
+  test "$(awk 'NF { count++ } END { print count+0 }' "$NOTES")" -ge 2 &&
   git tag -a "$TAG" -m "Release $TAG"
 ```
 
@@ -176,11 +184,11 @@ git push origin "refs/tags/$TAG"
 Create a draft release and upload the staged assets. The tag is now on GitHub, so `--verify-tag` prevents the CLI from creating a different tag:
 
 ```sh
-set --
+prerelease=false
 case "$VERSION" in
-  *-rc.*) set -- --prerelease ;;
+  *-rc.*) prerelease=true ;;
 esac
-gh release create "$TAG" --verify-tag --draft "$@" --title "$TAG" --notes-file "$NOTES" \
+gh release create "$TAG" --verify-tag --draft --prerelease="$prerelease" --title "$TAG" --notes-file "$NOTES" \
   "dist/${PROVIDER}_${VERSION}_darwin_amd64.zip" \
   "dist/${PROVIDER}_${VERSION}_darwin_arm64.zip" \
   "dist/${PROVIDER}_${VERSION}_linux_amd64.zip" \
@@ -244,11 +252,11 @@ EOF
     exit 1
   fi
   printf '%s\n' "$output"
-  printf '%s\n' "$output" | grep -F "Installed elephant-evergreen/githubsettings v$VERSION (" | grep -F 'signed'
+  printf '%s\n' "$output" | grep -F "Installed elephant-evergreen/githubsettings v$VERSION (" | grep -Eq '\((self-signed, key ID |signed by )'
   TF_CLI_CONFIG_FILE=/dev/null "$terraform_bin" providers
 )
 ```
 
-The install line must include `signed`; for this namespace it is normally `(self-signed, key ID ...)`, which means Terraform verified the checksum signature with the key registered in the Registry. This assertion applies only to the direct Registry init shown here; a local filesystem mirror or provider cache can install without the signature line.
+For this namespace, the signed install line is normally `(self-signed, key ID ...)`, which means Terraform verified the checksum signature with the key registered in the Registry. This assertion applies only to the direct Registry init shown here; a local filesystem mirror or provider cache can install without the signature line.
 
-Open the provider page in the Terraform Registry and confirm that the selected version is listed and its documentation renders. The subshell removes the temporary directory when it exits.
+Open the provider page in the Terraform Registry and confirm that the selected version is listed and its documentation renders. The subshell removes the temporary directory when it exits. A release candidate requires an exact pin. A higher-version candidate may appear as the newest version on the Registry page.
