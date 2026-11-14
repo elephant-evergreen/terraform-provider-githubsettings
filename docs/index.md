@@ -16,6 +16,8 @@ Set `GITHUB_TOKEN` to a token with access to the configured repositories or orga
 
 Resources manage existing GitHub settings; the provider does not create repositories or organizations. Destroying a resource removes it from Terraform state and stops management without changing the GitHub setting.
 
+See [release notes and upgrade instructions](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) before upgrading.
+
 ## Example Usage
 
 ```terraform

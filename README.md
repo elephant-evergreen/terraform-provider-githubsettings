@@ -4,6 +4,8 @@ Manage selected GitHub repository and organization settings with Terraform. Inst
 
 The provider has no configuration arguments. Terraform reads a GitHub API token from the `GITHUB_TOKEN` environment variable. It manages existing settings; it does not create repositories or organizations. Destroying a resource removes it from Terraform state without changing the GitHub setting.
 
+See [release notes and upgrade instructions](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) before changing the pinned version.
+
 ## Quickstart
 
 This inspects one repository's fork pull request contributor approval policy, imports it, and plans without changing GitHub. Run it in a new working directory, or add the configuration to an existing Terraform project where appropriate. You need Terraform and the [GitHub CLI](https://cli.github.com/) (`gh`) installed.
@@ -100,7 +102,7 @@ go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 gener
 
 ## Release
 
-Releases are manual; the repository does not use GitHub Actions. Maintainers stage a signed release from a reviewed commit on the default branch, inspect a draft GitHub release, publish it, and then publish or resync the version in the Terraform Registry. See [RELEASE.md](RELEASE.md) for the v0.0.1 commands, signing-key handling, Registry permissions, and fresh-install verification.
+Releases are manual; the repository does not use GitHub Actions. Maintainers stage a signed release from a reviewed commit on the default branch, inspect a draft GitHub release, publish it, and then publish or resync the version in the Terraform Registry. See [RELEASE.md](RELEASE.md) for versioning, release notes, signing, and Registry verification.
 
 ## License
 
