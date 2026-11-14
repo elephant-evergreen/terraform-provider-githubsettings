@@ -1,1 +1,0 @@
-terraform import githubsettings_repository_workflow_permissions.example example-owner/example-repository

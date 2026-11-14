@@ -27,7 +27,6 @@ var (
 	_            resource.ResourceWithImportState      = (*policyResource)(nil)
 	_            resource.ResourceWithConfigValidators = (*policyResource)(nil)
 	ownerPattern                                       = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
-	claimPattern                                       = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 	repoPattern                                        = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 )
 
@@ -200,24 +199,13 @@ func (r *policyResource) sync(ctx context.Context, identity policyIdentity, desi
 	if err != nil {
 		return types.ObjectNull(nil), err
 	}
-	method := r.spec.method
 	data, err := r.payload(ctx, desired)
 	if err != nil {
 		return types.ObjectNull(nil), err
 	}
-	var body any = data
-	for i := len(r.spec.jsonPath) - 1; i >= 0; i-- {
-		body = map[string]any{r.spec.jsonPath[i]: body}
-	}
-	if r.spec.name == "repository_immutable_releases" {
-		body = nil
-		if actual.Attributes()["enforced_by_owner"].(types.Bool).ValueBool() {
-			return types.ObjectNull(nil), errors.New("GitHub enforces immutable releases through the repository owner")
-		}
-		method = http.MethodDelete
-		if data["enabled"].(bool) {
-			method = http.MethodPut
-		}
+	method, body, err := r.writeRequest(actual.Attributes(), desired, data)
+	if err != nil {
+		return types.ObjectNull(nil), err
 	}
 	if err := r.client.request(ctx, method, endpoint, body, nil); err != nil {
 		return types.ObjectNull(nil), err
@@ -232,7 +220,21 @@ func (r *policyResource) sync(ctx context.Context, identity policyIdentity, desi
 	return actual, nil
 }
 
+func (r *policyResource) writeRequest(actual, desired map[string]attr.Value, data map[string]any) (string, any, error) {
+	if r.spec.name == repositoryImmutableReleases {
+		return repositoryImmutableReleasesWrite(actual, desired)
+	}
+	var body any = data
+	for i := len(r.spec.jsonPath) - 1; i >= 0; i-- {
+		body = map[string]any{r.spec.jsonPath[i]: body}
+	}
+	return r.spec.method, body, nil
+}
+
 func (r *policyResource) payload(ctx context.Context, values map[string]attr.Value) (map[string]any, error) {
+	if err := validatePolicyValues(ctx, r.spec.name, values); err != nil {
+		return nil, err
+	}
 	result := make(map[string]any)
 	for _, field := range r.spec.fields {
 		if field.computed {
@@ -259,13 +261,6 @@ func (r *policyResource) payload(ctx context.Context, values map[string]attr.Val
 				if diags := value.ElementsAs(ctx, &keys, false); diags.HasError() {
 					return nil, fmt.Errorf("could not read %s", field.name)
 				}
-				seen := make(map[string]bool, len(keys))
-				for _, key := range keys {
-					if !claimPattern.MatchString(key) || seen[key] {
-						return nil, errors.New("include_claim_keys must contain distinct alphanumeric or underscore names")
-					}
-					seen[key] = true
-				}
 				result[field.name] = append([]string{}, keys...)
 			}
 		case types.Set:
@@ -278,18 +273,17 @@ func (r *policyResource) payload(ctx context.Context, values map[string]attr.Val
 			}
 		}
 	}
-	if r.spec.name == "repository_oidc_subject_template" && result["use_default"] == true {
-		if _, supplied := result["include_claim_keys"]; supplied {
-			return nil, errors.New("include_claim_keys must be omitted when use_default is true")
-		}
-	}
-	if r.spec.name == "organization_immutable_releases" {
-		_, hasIDs := result["selected_repository_ids"]
-		if (result["enforced_repositories"] == "selected") != hasIDs {
-			return nil, errors.New("selected_repository_ids is required when enforced_repositories is selected and omitted otherwise")
-		}
-	}
 	return result, nil
+}
+
+func validatePolicyValues(ctx context.Context, name string, values map[string]attr.Value) error {
+	switch name {
+	case repositoryOIDCSubjectTemplate:
+		return oidcSubjectTemplateRule(ctx, values)
+	case organizationImmutableReleases:
+		return organizationImmutableReleasesRule(values)
+	}
+	return nil
 }
 
 func (r *policyResource) read(ctx context.Context, identity policyIdentity) (types.Object, error) {
@@ -303,18 +297,12 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 	var reply map[string]json.RawMessage
 	err = r.client.request(ctx, http.MethodGet, endpoint, nil, &reply)
 	if err != nil {
-		var status *statusError
-		if r.spec.name != "repository_immutable_releases" || !errors.As(err, &status) || status.status != http.StatusNotFound {
+		if r.spec.name == repositoryImmutableReleases {
+			reply, err = r.repositoryImmutableReleasesReply(ctx, identity, err)
+		}
+		if err != nil {
 			return types.ObjectNull(nil), err
 		}
-		var repository struct{ Permissions struct{ Admin bool } }
-		if err := r.client.request(ctx, http.MethodGet, "/repos/"+identity.owner+"/"+identity.repository, nil, &repository); err != nil {
-			return types.ObjectNull(nil), err
-		}
-		if !repository.Permissions.Admin {
-			return types.ObjectNull(nil), err
-		}
-		reply = map[string]json.RawMessage{"enabled": json.RawMessage("false"), "enforced_by_owner": json.RawMessage("false")}
 	}
 
 	for _, key := range r.spec.jsonPath {
@@ -346,8 +334,7 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 			var keys []string
 			raw := reply[field.name]
 			fields[field.name] = types.ListNull(types.StringType)
-			useDefault, _ := fields["use_default"].(types.Bool)
-			if len(raw) != 0 && string(raw) != "null" && !useDefault.ValueBool() {
+			if len(raw) != 0 && string(raw) != "null" {
 				if json.Unmarshal(raw, &keys) != nil {
 					return types.ObjectNull(nil), fmt.Errorf("GitHub did not return a string list for %s", field.name)
 				}
@@ -361,16 +348,8 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 			fields[field.name] = types.SetNull(types.Int64Type)
 		}
 	}
-	if r.spec.name == "organization_immutable_releases" && fields["enforced_repositories"].(types.String).ValueString() == "selected" {
-		ids, err := r.readSelectedRepositories(ctx, endpoint)
-		if err != nil {
-			return types.ObjectNull(nil), err
-		}
-		value, diags := types.SetValueFrom(ctx, types.Int64Type, ids)
-		if diags.HasError() {
-			return types.ObjectNull(nil), errors.New("could not read selected repository IDs")
-		}
-		fields["selected_repository_ids"] = value
+	if err := r.normalizePolicy(ctx, endpoint, fields); err != nil {
+		return types.ObjectNull(nil), err
 	}
 	attributeTypes := make(map[string]attr.Type, len(fields))
 	for name, value := range fields {
@@ -383,28 +362,14 @@ func (r *policyResource) read(ctx context.Context, identity policyIdentity) (typ
 	return result, nil
 }
 
-func (r *policyResource) readSelectedRepositories(ctx context.Context, endpoint string) ([]int64, error) {
-	ids := make([]int64, 0)
-	for page := 1; ; page++ {
-		var response struct {
-			TotalCount   int                  `json:"total_count"`
-			Repositories []struct{ ID int64 } `json:"repositories"`
-		}
-		path := fmt.Sprintf("%s/repositories?per_page=100&page=%d", endpoint, page)
-		if err := r.client.request(ctx, http.MethodGet, path, nil, &response); err != nil {
-			return nil, err
-		}
-		for _, repository := range response.Repositories {
-			ids = append(ids, repository.ID)
-		}
-		if len(response.Repositories) < 100 {
-			slices.Sort(ids)
-			if len(ids) != response.TotalCount || len(slices.Compact(ids)) != len(ids) {
-				return nil, errors.New("selected repositories changed during pagination")
-			}
-			return ids, nil
-		}
+func (r *policyResource) normalizePolicy(ctx context.Context, endpoint string, fields map[string]attr.Value) error {
+	switch r.spec.name {
+	case repositoryOIDCSubjectTemplate:
+		return normalizeOIDCSubjectTemplate(fields)
+	case organizationImmutableReleases:
+		return r.readOrganizationImmutableReleases(ctx, endpoint, fields)
 	}
+	return nil
 }
 
 type allowedValues []string
@@ -432,33 +397,43 @@ func (v policyConfigValidator) MarkdownDescription(ctx context.Context) string {
 }
 
 func (v policyConfigValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var owner, repo types.String
-	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("owner"), &owner)...)
-	if !v.spec.organization {
-		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("repository"), &repo)...)
-	}
-	if resp.Diagnostics.HasError() || owner.IsUnknown() || repo.IsUnknown() {
+	var config types.Object
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() || config.IsNull() || config.IsUnknown() {
 		return
 	}
-	if _, err := v.spec.endpoint(policyIdentity{owner: owner.ValueString(), repository: repo.ValueString()}); err != nil {
-		resp.Diagnostics.AddError("Invalid GitHub policy target", err.Error())
+	resp.Diagnostics.Append(v.validate(ctx, config.Attributes())...)
+}
+
+func (v policyConfigValidator) validate(ctx context.Context, values map[string]attr.Value) diag.Diagnostics {
+	var diagnostics diag.Diagnostics
+	if err := v.spec.validateTarget(values); err != nil {
+		diagnostics.AddError("Invalid GitHub policy target", err.Error())
 	}
-	if v.spec.name == "repository_oidc_subject_template" {
-		var useDefault types.Bool
-		var keys types.List
-		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("use_default"), &useDefault)...)
-		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("include_claim_keys"), &keys)...)
-		if useDefault.ValueBool() && !keys.IsUnknown() && !keys.IsNull() {
-			resp.Diagnostics.AddAttributeError(path.Root("include_claim_keys"), "Invalid OIDC claim keys", "Omit include_claim_keys when use_default is true.")
+	if err := validatePolicyValues(ctx, v.spec.name, values); err != nil {
+		attribute := "owner"
+		var ruleErr *policyRuleError
+		if errors.As(err, &ruleErr) {
+			attribute = ruleErr.attribute
 		}
+		diagnostics.AddAttributeError(path.Root(attribute), "Invalid GitHub policy configuration", err.Error())
 	}
-	if v.spec.name == "organization_immutable_releases" {
-		var policy types.String
-		var ids types.Set
-		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("enforced_repositories"), &policy)...)
-		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("selected_repository_ids"), &ids)...)
-		if !policy.IsUnknown() && !ids.IsUnknown() && (policy.ValueString() == "selected") == ids.IsNull() {
-			resp.Diagnostics.AddAttributeError(path.Root("selected_repository_ids"), "Invalid immutable releases selection", "Set selected_repository_ids when enforced_repositories is selected and omit it otherwise.")
+	return diagnostics
+}
+
+func (spec policySpec) validateTarget(values map[string]attr.Value) error {
+	owner, ok := values["owner"].(types.String)
+	if !ok || owner.IsUnknown() {
+		return nil
+	}
+	identity := policyIdentity{owner: owner.ValueString()}
+	if !spec.organization {
+		repository, ok := values["repository"].(types.String)
+		if !ok || repository.IsUnknown() {
+			return nil
 		}
+		identity.repository = repository.ValueString()
 	}
+	_, err := spec.endpoint(identity)
+	return err
 }

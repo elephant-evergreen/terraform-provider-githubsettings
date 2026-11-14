@@ -28,6 +28,21 @@ type policySpec struct {
 	readOnly     bool
 }
 
+const (
+	repositoryOIDCSubjectTemplate = "repository_oidc_subject_template"
+	repositoryImmutableReleases   = "repository_immutable_releases"
+	organizationImmutableReleases = "organization_immutable_releases"
+)
+
+type policyRuleError struct {
+	attribute string
+	message   string
+}
+
+func (e *policyRuleError) Error() string {
+	return e.message
+}
+
 func flag(name, description string) policyField {
 	return policyField{name: name, typ: types.BoolType, description: description}
 }
@@ -81,15 +96,7 @@ var policies = []policySpec{
 			flag("web_commit_signoff_required", "Require contributors to sign off on web-based commits."),
 		},
 	},
-	{
-		name: "repository_oidc_subject_template", suffix: "/actions/oidc/customization/sub", method: http.MethodPut,
-		description: "Manages the OpenID Connect subject template for GitHub Actions in one repository. Creating or updating this resource applies the configured template to GitHub; destroying it removes the resource from Terraform state without changing the template. GitHub's REST API requires fine-grained repository Actions read access to read this setting on a private repository and Actions write access to update it. Changing the subject format can require corresponding changes to the cloud provider's trust policy; see https://docs.github.com/en/actions/concepts/security/openid-connect. API reference: https://docs.github.com/en/rest/actions/oidc#set-the-customization-template-for-an-oidc-subject-claim-for-a-repository.",
-		fields: []policyField{
-			flag("use_default", "Use GitHub's default subject claim template."),
-			flag("use_immutable_subject", "Use an immutable subject claim."),
-			{name: "include_claim_keys", typ: types.ListType{ElemType: types.StringType}, description: "Ordered claim keys to include in the subject. Omit when use_default is true."},
-		},
-	},
+	repositoryOIDCSubjectTemplatePolicy,
 	{
 		name: "repository_secret_scanning_non_provider_patterns", method: http.MethodPatch,
 		jsonPath:    []string{"security_and_analysis", "secret_scanning_non_provider_patterns"},
@@ -124,14 +131,6 @@ var policies = []policySpec{
 		},
 	},
 	{
-		name: "repository_workflow_permissions", suffix: "/actions/permissions/workflow", method: http.MethodPut,
-		description: "Manages the default GitHub Actions workflow permissions for one repository. Creating or updating this resource applies the configured permissions to GitHub; destroying it removes the resource from Terraform state without changing them. Requires a token with repository administration write access.",
-		fields: []policyField{
-			choice("default_workflow_permissions", "Default GITHUB_TOKEN permissions for workflows.", "read", "write"),
-			flag("can_approve_pull_request_reviews", "Allow GitHub Actions to approve pull request reviews."),
-		},
-	},
-	{
 		name: "repository_fork_contributor_approval", suffix: "/actions/permissions/fork-pr-contributor-approval", method: http.MethodPut,
 		description: "Manages the approval policy for workflows from fork pull requests by external contributors in one repository. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing the policy. Requires a token with repository administration write access.",
 		fields:      []policyField{choice("approval_policy", "Approval policy for external contributors.", "first_time_contributors_new_to_github", "first_time_contributors", "all_external_contributors")},
@@ -154,20 +153,6 @@ var policies = []policySpec{
 			choice("pull_request_creation_policy", "Who can create pull requests.", "all", "collaborators_only"),
 		},
 	},
-	{
-		name: "repository_immutable_releases", suffix: "/immutable-releases",
-		description: "Manages immutable releases for one repository. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing the policy. GitHub can enforce immutable releases through the repository owner. enforced_by_owner reports that policy and the provider rejects changes while it is active. Requires a token with repository administration write access.",
-		fields: []policyField{
-			flag("enabled", "Enable immutable releases."),
-			{name: "enforced_by_owner", typ: types.BoolType, computed: true, description: "Whether the repository owner enforces immutable releases. The provider rejects changes while this is true."},
-		},
-	},
-	{
-		name: "organization_immutable_releases", organization: true, suffix: "/settings/immutable-releases", method: http.MethodPut,
-		description: "Manages immutable releases for repositories in one organization. Creating or updating this resource applies the configured policy to GitHub; destroying it removes the resource from Terraform state without changing it. Requires a token with organization administration write access.",
-		fields: []policyField{
-			choice("enforced_repositories", "Repositories with immutable releases.", "none", "all", "selected"),
-			{name: "selected_repository_ids", typ: types.SetType{ElemType: types.Int64Type}, description: "Repository IDs with immutable releases. Required when enforced_repositories is selected."},
-		},
-	},
+	repositoryImmutableReleasesPolicy,
+	organizationImmutableReleasesPolicy,
 }

@@ -86,7 +86,9 @@ unset GITHUB_TOKEN
 
 ## Managed settings
 
-The provider manages 13 settings: three read-only resources that record GitHub settings and fail apply when configuration differs, and ten write resources that apply configuration to GitHub. See the [resource documentation](docs/resources/) for arguments, attributes, permissions, and import syntax.
+The provider manages 12 settings: three read-only resources that record GitHub settings and fail apply when configuration differs, and nine write resources that apply configuration to GitHub. See the [resource documentation](docs/resources/) for arguments, attributes, permissions, and import syntax.
+
+Default workflow permissions are managed by the official [integrations/github provider](https://registry.terraform.io/providers/integrations/github/latest) resource `github_workflow_repository_permissions`; this provider does not include them.
 
 ## Development
 
@@ -98,14 +100,7 @@ go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 gener
 
 ## Release
 
-Releases are manual. From a reviewed commit on the default branch:
-
-```sh
-git tag v0.0.1
-GPG_FINGERPRINT=<key> goreleaser release --clean
-```
-
-GoReleaser builds the Linux and macOS archives, SHA-256 checksums, Registry manifest, and detached signature. `GITHUB_TOKEN` and the signing key are supplied by the operator's environment and are never committed.
+Releases are manual; the repository does not use GitHub Actions. Maintainers stage a signed release from a reviewed commit on the default branch, inspect a draft GitHub release, publish it, and then publish or resync the version in the Terraform Registry. See [RELEASE.md](RELEASE.md) for the v0.0.1 commands, signing-key handling, Registry permissions, and fresh-install verification.
 
 ## License
 
