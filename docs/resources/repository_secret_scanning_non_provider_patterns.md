@@ -14,9 +14,7 @@ Removing this resource from Terraform management leaves the GitHub setting in pl
 
 ## Import the current setting
 
-1. Match the resource arguments to the values GitHub currently reports.
-2. Add the import block below. Replace the example ID and address with those of your resource.
-3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+Add the import block below to a Terraform project configured with `elephant-evergreen/githubsettings`. The [quickstart](https://registry.terraform.io/providers/elephant-evergreen/githubsettings/latest/docs#import-a-policy) shows the provider block and initialization. Replace the example ID and address with those of your resource.
 
 ```terraform
 import {
@@ -24,6 +22,10 @@ import {
   id = "example-owner/example-repository"
 }
 ```
+
+1. Add the resource block with arguments that match the current GitHub values.
+2. Run `terraform plan -out=adopt.tfplan`. For one import, expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If the plan proposes a change, compare the differing values with the current policy and save a new plan.
+3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import. The next `terraform plan` should report `No changes`.
 
 ## Example configuration
 

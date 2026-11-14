@@ -12,44 +12,67 @@ Manage GitHub Actions, pull request, release, and security settings for existing
 
 ## Why?
 
-Use this provider alongside [`integrations/github`](https://registry.terraform.io/providers/integrations/github/latest/docs) for selected policies on existing repositories and organizations. See [why this provider exists and when to use it](https://github.com/elephant-evergreen/terraform-provider-githubsettings#why).
+Use [`integrations/github`](https://registry.terraform.io/providers/integrations/github/latest/docs) for repositories, teams, and rulesets. Add GitHub Settings for policies such as fork pull request approval, immutable Actions OIDC subjects, and organization deploy-key policy. Keep each setting under one provider.
 
-To take over a policy, start with the [import quickstart](https://github.com/elephant-evergreen/terraform-provider-githubsettings#quickstart). Before upgrading, read the [release notes for your target version](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases).
+## Authentication
 
-## Example Usage
+Set `GITHUB_TOKEN` to a token with access to your target repository or organization. Use the resource page to choose its permissions. If you already use the [GitHub CLI](https://cli.github.com/), you can reuse its github.com token.
+
+```sh
+gh auth status --hostname github.com
+GITHUB_TOKEN="$(gh auth token --hostname github.com)" && export GITHUB_TOKEN
+```
+
+Run `gh auth login --hostname github.com --web` if you need to sign in, then run the export command.
+
+## Import a policy
+
+Import one repository's fork pull request approval policy into Terraform state. The import leaves GitHub unchanged. Use Terraform with [import block support](https://developer.hashicorp.com/terraform/language/block/import) and the GitHub CLI. For this example, a fine-grained token needs repository **Administration: Read**. OAuth tokens and classic PATs need the `repo` scope.
+
+Read the current policy using the same token. Replace `OWNER` and `REPOSITORY`.
+
+```sh
+GH_TOKEN="${GITHUB_TOKEN:?Set GITHUB_TOKEN first}" gh api --hostname github.com \
+  repos/OWNER/REPOSITORY/actions/permissions/fork-pr-contributor-approval \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  --jq .approval_policy
+```
+
+Expect one value such as `first_time_contributors`. If the request returns `403` or `404`, check the repository name, token access to that repository, and the [permissions required to read the policy](https://docs.github.com/en/rest/actions/permissions#get-fork-pr-contributor-approval-permissions-for-a-repository).
+
+Save this as `main.tf` in an empty directory. Replace `OWNER`, `REPOSITORY`, and the example `approval_policy` with your values.
 
 ```terraform
 terraform {
   required_providers {
     githubsettings = {
-      source = "elephant-evergreen/githubsettings"
+      source  = "elephant-evergreen/githubsettings"
+      version = "~> 0.0.4"
     }
   }
 }
 
 provider "githubsettings" {}
+
+resource "githubsettings_repository_fork_contributor_approval" "example" {
+  owner           = "OWNER"
+  repository      = "REPOSITORY"
+  approval_policy = "first_time_contributors"
+}
+
+import {
+  to = githubsettings_repository_fork_contributor_approval.example
+  id = "OWNER/REPOSITORY"
+}
 ```
 
-If you already use a bundled OpenTofu build, see the [migration guide](https://registry.terraform.io/providers/elephant-evergreen/githubsettings/latest/docs/guides/bundled-provider-migration).
+1. Run `terraform init`.
+2. Run `terraform plan -out=adopt.tfplan`. Expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If it includes a change, compare the configuration with the value returned by `gh api` and save a new plan.
+3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import.
+4. Run `terraform plan` again and expect `No changes`.
 
-## Authentication
+For other settings, use the permissions and import procedure on the resource page. Remove the token from the current shell with `unset GITHUB_TOKEN` when finished.
 
-The provider reads `GITHUB_TOKEN` from the environment. With the [GitHub CLI](https://cli.github.com/) installed, check the login:
+## Upgrade an existing installation
 
-```shell
-gh auth status --hostname github.com
-```
-
-If it reports no account for github.com, sign in:
-
-```shell
-gh auth login --hostname github.com --web
-```
-
-Export a token in the current shell. The command substitution keeps it out of terminal output:
-
-```shell
-GITHUB_TOKEN="$(gh auth token --hostname github.com)" && export GITHUB_TOKEN
-```
-
-Check the resource page and GitHub's REST API documentation for the permissions the setting requires. See [Permissions required for fine-grained personal access tokens](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens) when using a fine-grained PAT. Run `unset GITHUB_TOKEN` when finished.
+Read the [release notes for your target version](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) before updating. For a bundled OpenTofu build, follow the [migration guide](https://registry.terraform.io/providers/elephant-evergreen/githubsettings/latest/docs/guides/bundled-provider-migration).

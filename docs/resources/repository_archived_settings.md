@@ -14,9 +14,31 @@ Removing this resource from Terraform management leaves the GitHub setting in pl
 
 ## Import the current setting
 
-1. Match the resource arguments to the values GitHub currently reports.
-2. Add the import block below. Replace the example ID and address with those of your resource.
-3. Run `terraform plan`. For one import, apply only when it reports `1 to import, 0 to add, 0 to change, 0 to destroy`.
+Read the current values with the GitHub CLI. Set [`GITHUB_TOKEN`](https://registry.terraform.io/providers/elephant-evergreen/githubsettings/latest/docs#authentication) first so this command and Terraform use the same token. Replace `OWNER` and `REPOSITORY`.
+
+```shell
+GH_TOKEN="${GITHUB_TOKEN:?Set GITHUB_TOKEN first}" gh api --hostname github.com repos/OWNER/REPOSITORY \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  --jq '{
+  archived,
+  allow_auto_merge,
+  allow_forking,
+  allow_merge_commit,
+  allow_rebase_merge,
+  allow_squash_merge,
+  allow_update_branch,
+  delete_branch_on_merge,
+  merge_commit_message,
+  merge_commit_title,
+  squash_merge_commit_message,
+  squash_merge_commit_title,
+  web_commit_signoff_required
+}'
+```
+
+Confirm that `archived` is `true`. Use the other returned values as resource arguments. If a merge setting is missing, check the repository access and the [API requirements for merge settings](https://docs.github.com/en/rest/repos/repos#get-a-repository).
+
+Add the import block below to a Terraform project configured with `elephant-evergreen/githubsettings`. The [quickstart](https://registry.terraform.io/providers/elephant-evergreen/githubsettings/latest/docs#import-a-policy) shows the provider block and initialization. Replace the example ID and address with those of your resource.
 
 ```terraform
 import {
@@ -24,6 +46,10 @@ import {
   id = "example-owner/example-repository"
 }
 ```
+
+1. Add the resource block with arguments that match the current GitHub values.
+2. Run `terraform plan -out=adopt.tfplan`. For one import, expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If the plan proposes a change, compare the differing values with the current policy and save a new plan.
+3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import. The next `terraform plan` should report `No changes`.
 
 ## Example configuration
 
