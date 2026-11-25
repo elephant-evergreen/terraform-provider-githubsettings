@@ -24,8 +24,8 @@ import {
 ```
 
 1. Add the resource block with arguments that match the current GitHub values.
-2. Run `terraform plan -out=adopt.tfplan`. For one import, expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If the plan proposes a change, compare the differing values with the current policy and save a new plan.
-3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import. The next `terraform plan` should report `No changes`.
+2. Run `terraform plan -out=adopt.tfplan` and keep a plan that contains only the import. If it proposes a change, compare the differing values with the current policy and save a new plan.
+3. Apply the saved plan.
 
 ## Example configuration
 
@@ -45,5 +45,5 @@ resource "githubsettings_repository_pull_requests" "example" {
 
 - `has_pull_requests` (Boolean) Enable pull requests.
 - `owner` (String) GitHub account that owns the repository or organization.
-- `pull_request_creation_policy` (String) Who can create pull requests. Allowed values are all, collaborators_only.
+- `pull_request_creation_policy` (String) Who can create pull requests. `all` allows any user with access to the repository; `collaborators_only` allows collaborators. Allowed values are all, collaborators_only.
 - `repository` (String) GitHub repository name within the owner account.

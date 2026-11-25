@@ -8,7 +8,7 @@ Use [`integrations/github`](https://registry.terraform.io/providers/integrations
 
 Use both providers in the same configuration and assign each setting to one provider. GitHub Settings manages policies on existing repositories and organizations. Import records the current setting in Terraform state, and removing a resource from management leaves the GitHub setting in place.
 
-[Browse all supported settings](docs/resources/). For upgrades, read the [release notes](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases) or the [migration guide for bundled OpenTofu builds](docs/guides/bundled-provider-migration.md).
+[Browse all supported settings](docs/resources/). For upgrades, read the [release notes](https://github.com/elephant-evergreen/terraform-provider-githubsettings/releases).
 
 ## Quickstart
 
@@ -20,7 +20,7 @@ Run `mise run check` for formatting, tests, vulnerability checks, builds, and ge
 
 ## Release
 
-The release workflow builds, signs, and verifies packages when a version tag is pushed. It publishes the GitHub release and verifies that the signed version installs from Terraform Registry. See [RELEASE.md](RELEASE.md) for versioning, release notes, and signing.
+See [RELEASE.md](RELEASE.md) for versioning, release notes, and signing.
 
 ## License
 
