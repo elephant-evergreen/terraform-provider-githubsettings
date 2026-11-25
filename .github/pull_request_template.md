@@ -10,7 +10,3 @@ Follow the [public information rules](../CONTRIBUTING.md#public-information).
 - [ ] Examples and fixtures use synthetic GitHub organizations, repositories, and tokens.
 - [ ] No per-device update or verification history.
 - [ ] Supported and tested versions are documented separately from any per-device history.
-
-## Checks
-
-- [ ] `mise run check`
