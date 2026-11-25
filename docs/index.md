@@ -67,9 +67,8 @@ import {
 ```
 
 1. Run `terraform init`.
-2. Run `terraform plan -out=adopt.tfplan`. Expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If it includes a change, compare the configuration with the value returned by `gh api` and save a new plan.
-3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import.
-4. Run `terraform plan` again and expect `No changes`.
+2. Run `terraform plan -out=adopt.tfplan` and keep a plan that contains only the import. If it includes a change, compare the configuration with the value returned by `gh api` and save a new plan.
+3. Apply the saved plan.
 
 For other settings, use the permissions and import procedure on the resource page. Remove the token from the current shell with `unset GITHUB_TOKEN` when finished.
 

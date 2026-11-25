@@ -24,8 +24,8 @@ import {
 ```
 
 1. Add the resource block with arguments that match the current GitHub values.
-2. Run `terraform plan -out=adopt.tfplan`. For one import, expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If the plan proposes a change, compare the differing values with the current policy and save a new plan.
-3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import. The next `terraform plan` should report `No changes`.
+2. Run `terraform plan -out=adopt.tfplan` and keep a plan that contains only the import. If it proposes a change, compare the differing values with the current policy and save a new plan.
+3. Apply the saved plan.
 
 ## Example configuration
 

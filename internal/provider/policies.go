@@ -85,7 +85,7 @@ var privateForkFields = []policyField{
 var policies = []policySpec{
 	{
 		name: "repository_archived_settings", readOnly: true,
-		description: "Record the merge settings of an archived repository. Use the values GitHub currently reports for the repository. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Give the token read access to the repository.",
+		description: "Records the merge settings of an archived repository without changing them. Set each argument to the value GitHub reports. Apply fails while the configured values differ. Give the token read access to the repository.",
 		fields: []policyField{
 			{name: "archived", typ: types.BoolType, computed: true, description: "Whether GitHub reports the repository as archived."},
 			flag("allow_auto_merge", "Allow auto-merge for pull requests."),
@@ -111,9 +111,9 @@ var policies = []policySpec{
 	},
 	{
 		name: "repository_secret_scanning_validity_checks", readOnly: true,
-		description: "Record the current secret scanning validity check status for this repository. Set `status` to the value GitHub reports for your repository. If the plan shows a difference, check the status in GitHub before applying. Apply fails while the configured status differs. Use a token with repository Administration read access.",
+		description: "Records the current secret scanning validity check status for this repository without changing it. Set `status` to the value GitHub reports. Apply fails while the configured status differs. Use a token with repository Administration read access.",
 		jsonPath:    []string{"security_and_analysis", "secret_scanning_validity_checks"},
-		fields:      []policyField{choice("status", "Secret scanning status.", "enabled", "disabled")},
+		fields:      []policyField{choice("status", "Secret scanning validity check status reported by GitHub.", "enabled", "disabled")},
 	},
 	{
 		name: "organization_deploy_keys", organization: true, method: http.MethodPatch,
@@ -122,7 +122,7 @@ var policies = []policySpec{
 	},
 	{
 		name: "organization_recorded_settings", organization: true, readOnly: true,
-		description: "Record the organization settings listed in the schema below. Use the values GitHub currently reports for your organization. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Use a token with organization Administration read access.",
+		description: "Records the organization settings listed in the schema below without changing them. Set each argument to the value GitHub reports. Apply fails while the configured values differ. Use a token with organization Administration read access.",
 		fields: []policyField{
 			text("default_repository_branch", "Default branch name for new repositories."),
 			flag("members_can_change_repo_visibility", "Allow members to change repository visibility."),
@@ -156,7 +156,7 @@ var policies = []policySpec{
 		description: "Manages whether pull requests are enabled in one repository and who can create them. Requires a token with repository administration write access.",
 		fields: []policyField{
 			flag("has_pull_requests", "Enable pull requests."),
-			choice("pull_request_creation_policy", "Who can create pull requests.", "all", "collaborators_only"),
+			choice("pull_request_creation_policy", "Who can create pull requests. `all` allows any user with access to the repository; `collaborators_only` allows collaborators.", "all", "collaborators_only"),
 		},
 	},
 	repositoryImmutableReleasesPolicy,

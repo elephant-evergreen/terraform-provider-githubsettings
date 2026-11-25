@@ -3,12 +3,12 @@
 page_title: "githubsettings_repository_archived_settings Resource - githubsettings"
 subcategory: ""
 description: |-
-  Record the merge settings of an archived repository. Use the values GitHub currently reports for the repository. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Give the token read access to the repository.
+  Records the merge settings of an archived repository without changing them. Set each argument to the value GitHub reports. Apply fails while the configured values differ. Give the token read access to the repository.
 ---
 
 # githubsettings_repository_archived_settings (Resource)
 
-Record the merge settings of an archived repository. Use the values GitHub currently reports for the repository. If the plan shows a difference, check those settings in GitHub before applying. Apply fails while the configured values differ. Give the token read access to the repository.
+Records the merge settings of an archived repository without changing them. Set each argument to the value GitHub reports. Apply fails while the configured values differ. Give the token read access to the repository.
 
 Removing this resource from Terraform management leaves the GitHub setting in place.
 
@@ -48,8 +48,8 @@ import {
 ```
 
 1. Add the resource block with arguments that match the current GitHub values.
-2. Run `terraform plan -out=adopt.tfplan`. For one import, expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If the plan proposes a change, compare the differing values with the current policy and save a new plan.
-3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import. The next `terraform plan` should report `No changes`.
+2. Run `terraform plan -out=adopt.tfplan` and keep a plan that contains only the import. If it proposes a change, compare the differing values with the current policy and save a new plan.
+3. Apply the saved plan.
 
 ## Example configuration
 

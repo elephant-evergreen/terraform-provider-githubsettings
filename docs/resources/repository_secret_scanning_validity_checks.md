@@ -3,12 +3,12 @@
 page_title: "githubsettings_repository_secret_scanning_validity_checks Resource - githubsettings"
 subcategory: ""
 description: |-
-  Record the current secret scanning validity check status for this repository. Set status to the value GitHub reports for your repository. If the plan shows a difference, check the status in GitHub before applying. Apply fails while the configured status differs. Use a token with repository Administration read access.
+  Records the current secret scanning validity check status for this repository without changing it. Set status to the value GitHub reports. Apply fails while the configured status differs. Use a token with repository Administration read access.
 ---
 
 # githubsettings_repository_secret_scanning_validity_checks (Resource)
 
-Record the current secret scanning validity check status for this repository. Set `status` to the value GitHub reports for your repository. If the plan shows a difference, check the status in GitHub before applying. Apply fails while the configured status differs. Use a token with repository Administration read access.
+Records the current secret scanning validity check status for this repository without changing it. Set `status` to the value GitHub reports. Apply fails while the configured status differs. Use a token with repository Administration read access.
 
 Removing this resource from Terraform management leaves the GitHub setting in place.
 
@@ -34,8 +34,8 @@ import {
 ```
 
 1. Add the resource block with arguments that match the current GitHub values.
-2. Run `terraform plan -out=adopt.tfplan`. For one import, expect `1 to import, 0 to add, 0 to change, 0 to destroy`. If the plan proposes a change, compare the differing values with the current policy and save a new plan.
-3. Run `terraform apply adopt.tfplan` once the saved plan contains only the import. The next `terraform plan` should report `No changes`.
+2. Run `terraform plan -out=adopt.tfplan` and keep a plan that contains only the import. If it proposes a change, compare the differing values with the current policy and save a new plan.
+3. Apply the saved plan.
 
 ## Example configuration
 
@@ -54,4 +54,4 @@ resource "githubsettings_repository_secret_scanning_validity_checks" "example" {
 
 - `owner` (String) GitHub account that owns the repository or organization.
 - `repository` (String) GitHub repository name within the owner account.
-- `status` (String) Secret scanning status. Allowed values are enabled, disabled.
+- `status` (String) Secret scanning validity check status reported by GitHub. Allowed values are enabled, disabled.
